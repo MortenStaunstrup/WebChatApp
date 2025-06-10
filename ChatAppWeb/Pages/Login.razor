@@ -1,0 +1,101 @@
+﻿@page "/Login"
+@using Core
+@inject NavigationManager NavigationManager
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject HttpClient Client
+<PageTitle>Login</PageTitle>
+
+<div class="pictureContainer">
+    
+</div>
+
+@if (success)
+{
+    <div class="alert alert-success">
+        Successfully logged in
+    </div>
+} else if (failed)
+{
+    <div class="alert alert-danger">
+        Oops, something went wrong
+    </div>
+}
+
+<div>
+    <label for="emailORphone"></label>
+    <input id="emailORphone" placeholder="Enter email or phone-number" @bind="emailOrPhone">
+    <p style="color: red">@emailOrPhoneError</p>
+</div>
+    
+<div>
+    <label for="password">Password</label>
+    <input id="password" placeholder="Enter password" type="password" @bind="Password">
+    <p style="color: red">@passwordError</p>
+</div>
+
+<div>
+    <span>Don't have an account? <a href="/register">SIGN IN</a></span>
+</div>
+
+<div>
+    <button @onclick="TryLogin" class="btn btn-primary">Login</button>
+</div>
+
+
+
+@code {
+    private User? _currentUser;
+    
+    private string emailOrPhone;
+    private string emailOrPhoneError;
+    
+    private string Password;
+    private string passwordError;
+
+    private bool success;
+    private bool failed;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUser = await LocalStorage.GetItemAsync<User>("user");
+        if(_currentUser != null)
+            NavigationManager.NavigateTo("/");
+    }
+
+    private async Task TryLogin()
+    {
+
+        if (string.IsNullOrWhiteSpace(Password) && string.IsNullOrWhiteSpace(emailOrPhone))
+        {
+            passwordError = "Password is required";
+            emailOrPhoneError = "Phone or email is required";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(Password))
+        {
+            passwordError = "Password is required";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(emailOrPhone))
+        {
+            emailOrPhoneError = "Phone or email is required";
+            return;
+        }
+        
+        var result = await Client.GetAsync($"auth/login/{emailOrPhone}/{Password}");
+        if (result.IsSuccessStatusCode)
+        {
+            success = true;
+            StateHasChanged();
+            var user = await result.Content.ReadFromJsonAsync<User>();
+            await LocalStorage.SetItemAsync("user", user);
+            NavigationManager.NavigateTo("/");
+        }
+
+        failed = true;
+        StateHasChanged();
+
+    }
+    
+}

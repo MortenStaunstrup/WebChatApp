@@ -1,7 +1,28 @@
 ﻿@page "/"
+@using Core
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject NavigationManager NavMan
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+@if (_currentUser == null)
+{
+    <p>Authenticating...</p>
+}
+else
+{
+        
+}
 
-Welcome to your new app.
+
+@code{
+    User? _currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUser = await LocalStorage.GetItemAsync<User>("user");
+        if (_currentUser == null)
+            NavMan.NavigateTo("/login");
+    }
+
+}

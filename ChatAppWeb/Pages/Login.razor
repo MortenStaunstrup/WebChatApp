@@ -5,10 +5,6 @@
 @inject HttpClient Client
 <PageTitle>Login</PageTitle>
 
-<div class="pictureContainer">
-    
-</div>
-
 @if (success)
 {
     <div class="alert alert-success">
@@ -21,27 +17,58 @@
     </div>
 }
 
-<div>
-    <label for="emailORphone"></label>
-    <input id="emailORphone" placeholder="Enter email or phone-number" @bind="emailOrPhone">
-    <p style="color: red">@emailOrPhoneError</p>
-</div>
+<div class="container" style="display: flex; align-items: center; margin-top: 150px;">
+    <div class="firstHalf">
+        <img alt="company logo" src="Pictures/CompanyLogo.png"/>
+
+        <h1>For you, who want to connect with people</h1>
+
+        <p>[Placeholder] helps you connect to the people you most want to talk to, without hassle, without securing your data because idk how to do that yet...</p>
+
+        <div class="loginCard">
+            <div>
+                <input id="emailORphone" placeholder="Email or Phone number" @bind="emailOrPhone">
+                <p style="color: red">@emailOrPhoneError</p>
+            </div>
+
+            <div>
+                <input id="password" placeholder="Password" type="password" @bind="Password">
+                <p style="color: red">@passwordError</p>
+            </div>
+
+            <div>
+                <span>Don't have an account? <a href="/register">SIGN IN</a></span>
+            </div>
+
+            <div class="loginButtonDiv">
+                <button @onclick="TryLogin" class="btn btn-primary" id="loginButton">Login</button>
+                <span><a href="#">Forgot your password?</a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="pictureContainer">
+        <img alt="Example use of chat app" src="Pictures/LoginPicture.png"/>
+    </div>
     
-<div>
-    <label for="password">Password</label>
-    <input id="password" placeholder="Enter password" type="password" @bind="Password">
-    <p style="color: red">@passwordError</p>
 </div>
 
-<div>
-    <span>Don't have an account? <a href="/register">SIGN IN</a></span>
+<div class="container">
+    <div class="footer">
+        <div>
+            <span>© MortyG</span>
+        </div>
+        <div>
+            <a href="#">Protection of data (there is none)</a>
+        </div>
+        <div>
+            <a href="#">Cookie policy</a>
+        </div>
+        <div>
+            <a href="#">Terms of use</a>
+        </div>
+    </div>
 </div>
-
-<div>
-    <button @onclick="TryLogin" class="btn btn-primary">Login</button>
-</div>
-
-
 
 @code {
     private User? _currentUser;

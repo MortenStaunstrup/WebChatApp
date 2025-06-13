@@ -1,0 +1,82 @@
+﻿.wholePage{
+    width:100%;
+    display:flex;
+}
+
+#image{
+    width:70%;
+    height: 97vh;
+}
+
+::deep .editForm{
+    width:30%;
+    height: 97vh;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: center;
+}
+
+::deep .inputStyle{
+    border-radius: 11px;
+    border: none;
+    background-color: #efefef;
+    padding-left: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+#registerButton{
+    background-color: #a078db;
+    border-radius: 100px;
+    font-weight: 600;
+    font-size: 24px;
+    padding: 2px 20px 4px;
+    margin: 20px 0px 12px;
+    border: none;
+    color: white;
+}
+
+#buttonSubmitDiv{
+    display: flex;
+    justify-content: center;
+}
+
+.inputDiv{
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    margin-bottom: 45px;
+    max-width: 273px;
+    width: 273px;
+}
+
+#checkBoxDiv{
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+}
+
+#checkBoxSpan{
+    margin-left: 10px;
+}
+
+label{
+    margin-bottom: 15px;
+}
+
+a{
+    text-decoration: none;
+}
+a:hover{
+    text-decoration-line: underline;
+}
+
+@media(max-width: 1000px){
+    #image{
+        display: none;
+    }
+    ::deep .editForm{
+        width:100%;
+    }
+}

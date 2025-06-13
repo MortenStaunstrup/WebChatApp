@@ -77,3 +77,8 @@ h1{
     margin: 20px 0px 12px;
     border: none;
 }
+
+#loginButton:hover{
+    background-color: #765399;
+    cursor: pointer;
+}

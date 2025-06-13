@@ -21,10 +21,24 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> TryLogin(string emailOrPhone, string password)
     {
         var result = await userRepository.TryLogin(emailOrPhone, password);
-        if(result == null)
-            return Unauthorized();
+        if (result == null)
+            return BadRequest("Server down");
+        
+        if(result.UserId == 0)
+            return Unauthorized("Not user found");
 
         result.Password = "placeholder";
         return Ok(result);
     }
+
+    [HttpPost]
+    [Route("create")]
+    public async Task<IActionResult> CreateUser(User user)
+    {
+        var result = await userRepository.CreateUser(user);
+        if (result == null)
+            return BadRequest();
+        return Ok(result);
+    }
+    
 }

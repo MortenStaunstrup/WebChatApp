@@ -1,0 +1,21 @@
+﻿.usersDiv{
+    min-width:285px;
+    outline: black solid 1px;
+}
+
+.messagesDiv{
+    width:100%;
+    outline: black solid 1px;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.inputDiv{
+    height:75px;
+    outline: black solid 1px;
+}
+
+.main{
+    height:95vh;
+    display:flex;
+}

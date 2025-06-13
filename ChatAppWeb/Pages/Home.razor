@@ -3,7 +3,7 @@
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager NavMan
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Messages</PageTitle>
 
 @if (_currentUser == null)
 {
@@ -11,7 +11,20 @@
 }
 else
 {
+    <div class="main">
         
+        <div class="usersDiv">
+
+        </div>
+
+        <div class="messagesDiv">
+
+            <div class="inputDiv">
+                
+            </div>
+        </div>
+
+    </div>
 }
 
 

@@ -1,66 +1,199 @@
 ﻿@page "/Register"
 @using Core
+@inject NavigationManager NavMan
+@inject HttpClient Client
 <PageTitle>Register</PageTitle>
 
 @if (loaded)
 {
-    <EditForm EditContext="EditContext" OnSubmit="HandleSubmit" FormName="Register user" class="container">
-        <div class="col-6">
-            <label for="firstname">Firstname</label>
-            <InputText id="firstname" @bind-Value="_model.FirstName"></InputText>
-        </div>
-
-        <div class="col-6">
-            <label for="lastname">Lastname</label>
-            <InputText id="lastname" @bind-Value="_model.LastName"></InputText>
-        </div>
-
-        <div class="col-6">
-            <label for="email">Email</label>
-            <InputText id="email" @bind-Value="_model.Email"></InputText>
-        </div>
-
-        <div class="col-6">
-            <label for="password">Password</label>
-            <InputText id="password" @bind-Value="_model.Password"></InputText>
-        </div>
-
-        <div class="col-6">
-            <label for="confirmPass">Confirm password</label>
-            <InputText id="confirmPass" @bind-Value="confirmPass"></InputText>
-        </div>
-
-        <div class="col-6">
-            <label for="phone">Phone number</label>
-            <InputText id="phone" @bind-Value="_model.PhoneNumber"></InputText>
-        </div>
-
-        <div class="col-6">
-            <button type="submit">Register</button>
-        </div>
+    <div class="wholePage">
         
-    </EditForm>
+        <img id="image" alt="random pic" src="Pictures/randpic.jpg"/>
+
+        <EditForm EditContext="EditContext" OnInvalidSubmit="HandleInvalidSubmit" OnValidSubmit="HandleValidSubmit" FormName="Register user" class="editForm">
+            <DataAnnotationsValidator></DataAnnotationsValidator>
+            
+            @if (error)
+            {
+                <div class="alert alert-danger" role="alert">
+                    Oops, something went wrong
+                </div>
+            }
+            
+            <h1 style="text-align: center; margin-bottom: 50px;">Sign Up</h1>
+            <div class="inputDiv">
+                <label>Firstname</label>
+                <InputText class="inputStyle" placeholder="Firstname" @bind-Value="_model.FirstName"></InputText>
+                <ValidationMessage For="() => _model.FirstName"></ValidationMessage>
+            </div>
+
+            <div class="inputDiv">
+                <label>Lastname</label>
+                <InputText class="inputStyle" placeholder="Lastname" @bind-Value="_model.LastName"></InputText>
+                <ValidationMessage For="() => _model.LastName"></ValidationMessage>
+            </div>
+
+            <div class="inputDiv">
+                <label>Email</label>
+                <InputText class="inputStyle" placeholder="Email address..." @bind-Value="_model.Email"></InputText>
+                <ValidationMessage For="() => _model.Email"></ValidationMessage>
+            </div>
+
+            <div class="inputDiv">
+                <label>Password</label>
+                <InputText class="inputStyle" type="password" placeholder="Password" @bind-Value="_model.Password"></InputText>
+                <ValidationMessage For="() => _model.Password"></ValidationMessage>
+            </div>
+
+            <div class="inputDiv">
+                <label>Confirm Password</label>
+                <InputText class="inputStyle" type="password" placeholder="Confirm password" @bind-Value="_model.ConfirmPassword"></InputText>
+                <ValidationMessage For="() => _model.ConfirmPassword"></ValidationMessage>
+            </div>
+
+            <div class="inputDiv">
+                <label>Phone number</label>
+                <InputText class="inputStyle" placeholder="Phone number" @bind-Value="_model.PhoneNumber"></InputText>
+                <ValidationMessage For="() => _model.PhoneNumber"></ValidationMessage>
+            </div>
+
+            <div id="checkBoxDiv">
+                <InputCheckbox Value="termsOfUse"
+                               ValueChanged="OnTermsChanged"
+                               ValueExpression="() => termsOfUse"></InputCheckbox> <span id="checkBoxSpan">Agree to <a href="/termsofuse"><b>Terms of Use</b></a></span>
+            </div>
+            <p style="color: red">@termsOfUseError</p>
+
+            <div id="buttonSubmitDiv">
+                <button class="btn btn-primary" id="registerButton" type="submit">Register</button>
+
+            </div>
+        </EditForm>
+    </div>
 }
 
 @code {
-    User _model;
+    FormUser _model;
     EditContext EditContext;
-
-    string confirmPass;
     
     bool loaded;
+    bool termsOfUse = false;
+    string termsOfUseError = "";
 
+    bool error = false;
+    
+    // Touches the fields when validation is invalid, otherwise the fields appear as valid and validation errors are not shown when submitting custom validation attributes
+    // Blazor form validation attributes are a buggy mess
+    private void MarkFieldsAsTouched(EditContext editContext)
+    {
+        var properties = editContext.Model.GetType().GetProperties()
+            .Where(prop => prop.CanRead && prop.CanWrite);
+
+        foreach (var prop in properties)
+        {
+            var fieldIdentifier = new FieldIdentifier(editContext.Model, prop.Name);
+            editContext.NotifyFieldChanged(fieldIdentifier);
+        }
+    }
+    
     protected override void OnInitialized()
     {
-        _model = new User();
+        _model = new FormUser();
         EditContext = new EditContext(_model);
         loaded = true;
     }
 
-
-    private async void HandleSubmit()
+    // Validation handling
+    private void HandleInvalidSubmit()
     {
+        TermsOfUseValid();
+        MarkFieldsAsTouched(EditContext);
+    }
+
+    private async void HandleValidSubmit()
+    {
+        if (!TermsOfUseValid())
+            return;
+
+        RemoveWhiteSpaceNames();
         
+        var response = await Client.PostAsJsonAsync("auth/create", _model as User);
+        
+        if(response.IsSuccessStatusCode)
+            NavMan.NavigateTo("/login");
+        else
+        {
+            error = true;
+            StateHasChanged();
+        }
+        
+    }
+
+    private void RemoveWhiteSpaceNames()
+    {
+        var trimmedFirstName = _model.FirstName.Trim();
+        var checkedString = "";
+        
+        int concurrentSpaces = 0;
+        foreach (var c in trimmedFirstName)
+        {
+            if(!char.IsWhiteSpace(c))
+                concurrentSpaces = 0;
+            else if (char.IsWhiteSpace(c))
+                concurrentSpaces++;
+
+            if (concurrentSpaces > 1)
+                continue;
+            
+            checkedString += c;
+        }
+
+        _model.FirstName = checkedString;
+        
+        var trimmedLastName = _model.LastName.Trim();
+        var checkedString2 = "";
+        
+        int concurrentSpaces2 = 0;
+        foreach (var c in trimmedLastName)
+        {
+            if(!char.IsWhiteSpace(c))
+                concurrentSpaces2 = 0;
+            else if (char.IsWhiteSpace(c))
+                concurrentSpaces2++;
+
+            if (concurrentSpaces2 > 1)
+                continue;
+            
+            checkedString2 += c;
+        }
+
+        _model.LastName = checkedString2;
+        
+    }
+    
+    // Terms of use handling
+    private void OnTermsChanged(bool newValue)
+    {
+        termsOfUse = newValue;
+        if (termsOfUse)
+        {
+            termsOfUseError = "";
+            StateHasChanged();
+        }
+    }
+
+    private bool TermsOfUseValid()
+    {
+        termsOfUseError = "";
+        StateHasChanged();
+        if (!termsOfUse)
+        {
+            termsOfUseError = "You must agree to the terms of use";
+            StateHasChanged();
+            return false;
+        }
+
+        return true;
     }
 
 }

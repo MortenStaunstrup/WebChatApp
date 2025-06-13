@@ -1,7 +1,10 @@
 using ChatAppAPI.Repositories;
 using ChatAppAPI.Repositories.Interfaces;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
+
+Env.Load();
 
 // Add services to the container.
 

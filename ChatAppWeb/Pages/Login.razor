@@ -1,19 +1,15 @@
 ﻿@page "/Login"
+@using System.Net
 @using Core
 @inject NavigationManager NavigationManager
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject HttpClient Client
 <PageTitle>Login</PageTitle>
 
-@if (success)
+@if (failed)  //TODO figure out how to give the div the right size
 {
-    <div class="alert alert-success">
-        Successfully logged in
-    </div>
-} else if (failed)
-{
-    <div class="alert alert-danger">
-        Oops, something went wrong
+    <div class="alert alert-danger" style="position: absolute; left: 0; right: 0; margin: auto 350px auto 350px; ">
+        @errorMessage
     </div>
 }
 
@@ -27,12 +23,12 @@
 
         <div class="loginCard">
             <div>
-                <input id="emailORphone" placeholder="Email or Phone number" @bind="emailOrPhone">
+                <input id="emailORphone" placeholder="Email or Phone number" @onchange="OnEmailPhoneChange">
                 <p style="color: red">@emailOrPhoneError</p>
             </div>
 
             <div>
-                <input id="password" placeholder="Password" type="password" @bind="Password">
+                <input id="password" placeholder="Password" type="password" @onchange="OnPasswordChange">
                 <p style="color: red">@passwordError</p>
             </div>
 
@@ -78,15 +74,27 @@
     
     private string Password;
     private string passwordError;
-
-    private bool success;
+    
     private bool failed;
+    string errorMessage = "";
     
     protected override async Task OnInitializedAsync()
     {
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
         if(_currentUser != null)
             NavigationManager.NavigateTo("/");
+    }
+
+    private void OnPasswordChange(ChangeEventArgs e)
+    {
+        Password = (string)e.Value;
+        passwordError = "";
+    }
+    
+    private void OnEmailPhoneChange(ChangeEventArgs e)
+    {
+        emailOrPhone = (string)e.Value;
+        emailOrPhoneError = "";
     }
 
     private async Task TryLogin()
@@ -113,16 +121,31 @@
         var result = await Client.GetAsync($"auth/login/{emailOrPhone}/{Password}");
         if (result.IsSuccessStatusCode)
         {
-            success = true;
-            StateHasChanged();
             var user = await result.Content.ReadFromJsonAsync<User>();
             await LocalStorage.SetItemAsync("user", user);
             NavigationManager.NavigateTo("/");
         }
 
-        failed = true;
-        StateHasChanged();
-
+        if (result.StatusCode == HttpStatusCode.BadRequest)
+        {
+            errorMessage = "Server is down";
+            failed = true;
+            StateHasChanged();
+            await Task.Delay(3000);
+            failed = false;
+            errorMessage = "";
+            StateHasChanged();
+        } else if (result.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            errorMessage = "User credentials wrong";
+            failed = true;
+            StateHasChanged();
+            await Task.Delay(3000);
+            failed = false;
+            errorMessage = "";
+            StateHasChanged();
+        }
+        
     }
-    
+
 }

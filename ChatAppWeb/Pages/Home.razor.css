@@ -3,19 +3,105 @@
     outline: black solid 1px;
 }
 
+.userSearchDiv{
+    position:relative;
+    height:75px;
+    outline: black solid 1px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+}
+
 .messagesDiv{
     width:100%;
     outline: black solid 1px;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
+}
+
+
+.main{
+    height:95vh;
+    display:flex;
+}
+
+
+::deep .inputStyle{
+        border-radius: 11px;
+        border: none;
+        background-color: #efefef;
+        padding-left: 10px;
+        padding-top: 5px;
+        padding-bottom: 5px;
 }
 
 .inputDiv{
     height:75px;
     outline: black solid 1px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    align-content: center;
 }
 
-.main{
-    height:95vh;
-    display:flex;
+::deep .inputMessage{
+    border-radius: 11px;
+    border: none;
+    background-color: #efefef;
+    padding-left: 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 80%;
+}
+
+.sendIcon{
+    position: relative; 
+    right: 28px; 
+    top: 7px;
+}
+.sendIcon:hover{
+    cursor: pointer;
+}
+.sendIcon:active{
+    
+}
+
+.searchedPeoplesDropdown {
+    display: block; /* or visibility: hidden or whatever your default should be */
+    position: absolute;
+    top: 67px;
+    overflow: auto;
+    width: 90%;
+    height: 45vh;
+    outline: black solid 1px;
+    background-color: white;
+}
+
+.userCard{
+    display: flex;
+    align-items: center;
+    border-radius: 140px;
+    img{
+        width: 50px;
+        height: 50px;
+        border-radius: 140px;
+        margin-right: 10px;
+    }
+}
+.userCard:hover{
+    cursor: pointer;
+    background-color: grey;
+}
+
+.messagesContainer{
+    height: 100%;
+}
+
+.userMessage{
+    
+}
+
+.receiverMessage{
+    
 }

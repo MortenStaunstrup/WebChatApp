@@ -1,4 +1,5 @@
 ﻿@page "/Register"
+@using System.Net
 @using Core
 @inject NavigationManager NavMan
 @inject HttpClient Client
@@ -20,7 +21,16 @@
                 </div>
             }
             
-            <h1 style="text-align: center; margin-bottom: 50px;">Sign Up</h1>
+            <h1 style="text-align: center; margin-bottom: 20px;">Sign Up</h1>
+            
+            <div id="profileDiv">
+                <img id="profilePic" alt="Projected profile image" src="@profilePic"/>
+            </div>
+            
+            <div class="inputDiv">
+                <InputFile OnChange="HandleFile" accept=".jpg,.jpeg,.png,.webp"></InputFile>
+            </div>
+            
             <div class="inputDiv">
                 <label>Firstname</label>
                 <InputText class="inputStyle" placeholder="Firstname" @bind-Value="_model.FirstName"></InputText>
@@ -34,6 +44,7 @@
             </div>
 
             <div class="inputDiv">
+                <p style="color: red;">@userAlExists</p>
                 <label>Email</label>
                 <InputText class="inputStyle" placeholder="Email address..." @bind-Value="_model.Email"></InputText>
                 <ValidationMessage For="() => _model.Email"></ValidationMessage>
@@ -81,6 +92,11 @@
     string termsOfUseError = "";
 
     bool error = false;
+
+    string userAlExists = "";
+
+    byte[]? picBytes;
+    string profilePic = "Pictures/noPic.png";
     
     // Touches the fields when validation is invalid, otherwise the fields appear as valid and validation errors are not shown when submitting custom validation attributes
     // Blazor form validation attributes are a buggy mess
@@ -103,6 +119,25 @@
         loaded = true;
     }
 
+    private async Task HandleFile(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream().CopyToAsync(memoryStream);
+            picBytes = memoryStream.ToArray();
+            profilePic = $"data:image/gif;base64,{Convert.ToBase64String(picBytes)}";
+            StateHasChanged();
+        }
+        else
+        {
+            picBytes = null;
+            profilePic = "Pictures/noPic.png";
+            StateHasChanged();
+        }
+    }
+    
     // Validation handling
     private void HandleInvalidSubmit()
     {
@@ -116,11 +151,19 @@
             return;
 
         RemoveWhiteSpaceNames();
+
+        if (picBytes != null)
+            _model.ProfilePicture = profilePic;
         
         var response = await Client.PostAsJsonAsync("auth/create", _model as User);
         
         if(response.IsSuccessStatusCode)
             NavMan.NavigateTo("/login");
+        else if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            userAlExists = "User with email already exists";
+            StateHasChanged();
+        }
         else
         {
             error = true;
@@ -129,6 +172,7 @@
         
     }
 
+    // Removes excess whitespace from firstname and lastname fields
     private void RemoveWhiteSpaceNames()
     {
         var trimmedFirstName = _model.FirstName.Trim();

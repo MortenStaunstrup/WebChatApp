@@ -32,6 +32,21 @@
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
+<script>
+    
+    //event.target is the html element that the user clicked
+    
+    window.registerOutsideClick = function (inputId, dropdownId, dotNetHelper) {
+        function handler(event) {
+            var input = document.getElementById(inputId);
+            var dropdown = document.getElementById(dropdownId);
+            if (!(input && input.contains(event.target)) && !(dropdown && dropdown.contains(event.target))) { // checks if InputText or dropdown contains what user clicked on, if neither dropdown or input is clicked, invoke the function
+                dotNetHelper.invokeMethodAsync('CloseDropdown'); // Call method in the page called 'CloseDropdown'
+            }
+        }
+        document.addEventListener('mousedown', handler); // Everywhere in the document, listen for 'mousedown' event
+    };
+</script>
 </body>
 
 </html>

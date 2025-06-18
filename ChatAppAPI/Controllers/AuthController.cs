@@ -38,7 +38,34 @@ public class AuthController : ControllerBase
         var result = await userRepository.CreateUser(user);
         if (result == null)
             return BadRequest();
+        if (result.UserId == 0)
+            return Unauthorized();
         return Ok(result);
     }
+
+    [HttpGet]
+    [Route("getquery/{query}")]
+    public async Task<IActionResult> GetQueriedUsers(string query)
+    {
+        //You maybe cannot send nothing/empty space over the endpoint, as that would be getquery/ which is not a valid endpoint
+        if(string.IsNullOrWhiteSpace(query))
+            return BadRequest();
+        
+        var result = await userRepository.GetQueriedUsers(query);
+        if (result == null || result.Count == 0)
+            return NotFound();
+        return Ok(result);
+    }
+
+    [HttpGet]
+    [Route("getuser/{id:int}")]
+    public async Task<IActionResult> GetUser(int id)
+    {
+        var result = await userRepository.GetUserByUserIdAsync(id);
+        if (result == null)
+            return NotFound();
+        return Ok(result);
+    }
+    
     
 }

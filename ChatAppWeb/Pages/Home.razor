@@ -1,7 +1,10 @@
 ﻿@page "/"
+@using System.Net
 @using Core
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager NavMan
+@inject HttpClient Client
+@inject IJSRuntime JS
 
 <PageTitle>Messages</PageTitle>
 
@@ -14,13 +17,81 @@ else
     <div class="main">
         
         <div class="usersDiv">
-
+            
+            <div class="userSearchDiv">
+                <InputText @bind-Value="_newUserSearch" id="userSearchInput"
+                           @oninput="OnSearchChange"
+                           @onfocus="ShowDropdown"
+                           placeholder="Start new conversation..." class="inputStyle"></InputText>
+                @if (showDropdown)
+                {
+                    <div class="searchedPeoplesDropdown" id="userSearchDropdown">
+                        @if (_searchedUsers.Count == 0 && string.IsNullOrWhiteSpace(_newUserSearch))
+                        {
+                            <p>Begin searching for a user to connect with</p>
+                        }
+                        else
+                        {
+                            if (_searchedUsers.Count > 0)
+                            {
+                                @foreach (var user in _searchedUsers)
+                                {
+                                    @if (!string.IsNullOrWhiteSpace(_newUserSearch))
+                                    {
+                                        <div @onclick="() => StartConvoWith(user.UserId)" class="userCard">
+                                            <img alt="profile pic" src="@(user.ProfilePicture ?? "Pictures/noPic.png")"/>
+                                            <span>@user.FirstName @user.LastName</span>
+                                        </div>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <p>No user with name found</p>
+                            }
+                        }
+                    </div>
+                }
+            </div>
         </div>
 
         <div class="messagesDiv">
-
+            
+            <div class="messagesContainer">
+                @if (userFound && hasMessages && clickedUser)
+                {
+                    foreach (var message in _currentConvoMessages)
+                    {
+                        if (message.Sender == _currentUser.UserId)
+                        {
+                            <div class="userMessage">
+                                @message.Content
+                                @message.Timestamp
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="receiverMessage">
+                                @message.Content
+                                @message.Timestamp
+                            </div>
+                        }
+                    }
+                }else if (!userFound && clickedUser)
+                {
+                    <p>This user does not exist??</p>
+                } else if (!hasMessages && clickedUser)
+                {
+                    <p>Begin your conversation with @_otherPerson.FirstName @_otherPerson.LastName</p>
+                }
+            </div>
+            
             <div class="inputDiv">
-                
+                <InputText @bind-Value="newText" class="inputMessage" placeholder="Send message"></InputText>
+                <svg @onclick="SendMessage" class="sendIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
+                </svg>
+                <InputFile OnChange="HandleFile"></InputFile>
             </div>
         </div>
 
@@ -30,12 +101,182 @@ else
 
 @code{
     User? _currentUser;
+    User? _otherPerson;
 
+    List<User> _searchedUsers = new List<User>();
+    string? _newUserSearch;
+
+    string? newText;
+
+    byte[]? fileBytes;
+    string? fileString;
+    
+    string noPicString = "Pictures/noPic.png";
+    
+    List<Message> _currentConvoMessages;
+    bool hasMessages;
+    bool userFound;
+    bool clickedUser;
+    bool messageNotSent;
+    bool messageSentNotFound;
+
+    bool showDropdown;
+
+    DotNetObjectReference<Home>? dotNetHelper;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("registerOutsideClick", "userSearchInput", "userSearchDropdown", dotNetHelper);
+        }
+    }
+    
+    [JSInvokable]
+    public void CloseDropdown()
+    {
+        showDropdown = false;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void ShowDropdown() => showDropdown = true;
+    
     protected override async Task OnInitializedAsync()
     {
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
         if (_currentUser == null)
             NavMan.NavigateTo("/login");
+    }
+
+    private async Task OnSearchChange(ChangeEventArgs e)
+    {
+        _newUserSearch = e.Value.ToString();
+        var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}");
+        if (response.IsSuccessStatusCode)
+        {
+            _searchedUsers = await response.Content.ReadFromJsonAsync<List<User>>();
+            StateHasChanged();
+        } else if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            _searchedUsers = new List<User>();
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleFile(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream().CopyToAsync(memoryStream);
+            fileBytes = memoryStream.ToArray();
+            fileString = Convert.ToBase64String(fileBytes);
+        }
+        else
+        {
+            fileBytes = null;
+            fileString = null;
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (_otherPerson == null || _currentUser == null)
+        {
+            newText = "";
+            return;
+        }
+
+        if(string.IsNullOrWhiteSpace(newText))
+            return;
+
+        Message newMess = new Message()
+        {
+            Content = newText,
+            MessageId = 0,
+            Receiver = _otherPerson.UserId,
+            Sender = _currentUser.UserId,
+            Timestamp = DateTime.MinValue
+        };
+        
+        var response = await Client.PostAsJsonAsync("messages/createMessage", newMess);
+        if (response.IsSuccessStatusCode)
+        {
+            var sentMessageId = await response.Content.ReadFromJsonAsync<int>();
+            var newResponse = await Client.GetAsync($"messages/getSentMessage/{sentMessageId}");
+            if (newResponse.IsSuccessStatusCode)
+            {
+                _currentConvoMessages.Add(await newResponse.Content.ReadFromJsonAsync<Message>());
+                newText = "";
+                StateHasChanged();
+            }
+            else
+            {
+                await ShowSentMessageCouldntBeFoundError();
+            }
+        }
+        else
+        {
+            await ShowMessageNotSentError();
+        }
+
+    }
+
+    private async Task ShowMessageNotSentError()
+    {
+        messageNotSent = true;
+        StateHasChanged();
+        await Task.Delay(3000);
+        messageNotSent = false;
+        StateHasChanged();
+    }
+
+    private async Task ShowSentMessageCouldntBeFoundError()
+    {
+        messageSentNotFound = true;
+        StateHasChanged();
+        await Task.Delay(3000);
+        messageNotSent = false;
+        StateHasChanged();
+    }
+
+    private async Task StartConvoWith(int userId)
+    {
+        showDropdown = false;
+        _newUserSearch = "";
+        var userResponse = await Client.GetAsync($"auth/getUser/{userId}");
+
+        if (userResponse.IsSuccessStatusCode)
+        {
+            _otherPerson = await userResponse.Content.ReadFromJsonAsync<User>();
+            userFound = true;
+        }
+        else
+        {
+            clickedUser = true;
+            userFound = false;
+            StateHasChanged();
+            return;
+        }
+        
+        var response = await Client.GetAsync($"messages/getMessages/{_currentUser.UserId}/{userId}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            _currentConvoMessages = await response.Content.ReadFromJsonAsync<List<Message>>();
+            hasMessages = true;
+            StateHasChanged();
+        } else if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            _currentConvoMessages = new List<Message>();
+            hasMessages = false;
+            StateHasChanged();
+        }
+        
+        clickedUser = true;
+
     }
 
 }

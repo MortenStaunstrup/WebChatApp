@@ -14,6 +14,7 @@ builder.Services.AddOpenApi();
 
 
 builder.Services.AddSingleton<IUserRepository, UserRepositoryMongoDb>();
+builder.Services.AddSingleton<IMessagesRepository, MessageRepositoryMongoDb>();
 
 builder.Services.AddCors(options =>
 {

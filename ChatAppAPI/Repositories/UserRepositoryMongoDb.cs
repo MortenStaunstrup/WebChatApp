@@ -1,6 +1,8 @@
-﻿using ChatAppAPI.Repositories.Interfaces;
+﻿using System.Text.RegularExpressions;
+using ChatAppAPI.Repositories.Interfaces;
 using Core;
 using Microsoft.AspNetCore.Connections;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace ChatAppAPI.Repositories;
@@ -66,10 +68,17 @@ public class UserRepositoryMongoDb : IUserRepository
     public async Task<User?> CreateUser(User user)
     {
         user.UserId = await GetMaxId() + 1;
-
+        
+        var filter = Builders<User>.Filter.Eq("Email", user.Email);
+        var result = await _userCollection.Find(filter).FirstOrDefaultAsync();
+        
+        if(result != null)
+            return new User(){UserId = 0};
+        
         try
         {
             await _userCollection.InsertOneAsync(user);
+            user.Password = "";
             return user;
         }
         catch (Exception e)
@@ -78,6 +87,48 @@ public class UserRepositoryMongoDb : IUserRepository
             return null;
         }
         
+    }
+
+    public async Task<List<User>?> GetQueriedUsers(string query)
+    {
+        var handledString = query.Trim();
+        
+        var finalString = "";
+        
+        int concurrentSpaces = 0;
+        foreach (var c in handledString)
+        {
+            if(!char.IsWhiteSpace(c))
+                concurrentSpaces = 0;
+            else if (char.IsWhiteSpace(c))
+                concurrentSpaces++;
+
+            if (concurrentSpaces > 1)
+                continue;
+            
+            finalString += c;
+        }
+
+        var regex = $"^{Regex.Escape(finalString)}";
+        var pipeline = new[]
+        {
+            new BsonDocument("$addFields", new BsonDocument("FullName", new BsonDocument("$concat", new BsonArray { "$FirstName", " ", "$LastName" }))),
+            new BsonDocument("$match", new BsonDocument("FullName", new BsonDocument("$regex", regex).Add("$options", "i"))),
+            new BsonDocument("$project", new BsonDocument {
+                { "FullName", 0 },
+                { "Password", 0 }
+            })
+        };
+
+        return await _userCollection.Aggregate<User>(pipeline).ToListAsync();
+    }
+
+    public async Task<User?> GetUserByUserIdAsync(int userId)
+    {
+        var filter = Builders<User>.Filter.Eq("UserId", userId);
+        var projection = Builders<User>.Projection.Exclude("Password");
+        
+        return await _userCollection.Find(filter).Project<User>(projection).FirstOrDefaultAsync();
     }
 
     private async Task<int> GetMaxId()

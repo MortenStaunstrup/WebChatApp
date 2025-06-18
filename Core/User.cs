@@ -26,6 +26,7 @@ public class User
     [Phone]
     [RegularExpression(@"^\S+$", ErrorMessage = "Phone number cannot contain spaces")]
     public string PhoneNumber { get; set; }
+    public string? ProfilePicture { get; set; }
 }
 
 

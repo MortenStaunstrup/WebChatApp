@@ -38,6 +38,10 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         
         if(firstList != null)
             messages.AddRange(firstList);
+
+        // Check if the user is getting messages they have sent to themselves
+        if (currentUserId == otherUserId)
+            return messages;
         
         var otherFirstFilter = Builders<Message>.Filter.Eq("Sender", otherUserId);
         var otherSecondFilter = Builders<Message>.Filter.Eq("Receiver", currentUserId);
@@ -50,7 +54,7 @@ public class MessageRepositoryMongoDb : IMessagesRepository
 
         if (messages.Count > 0)
         {
-            messages = messages.OrderByDescending(o => o.Timestamp).ToList();
+            messages = messages.OrderBy(o => o.Timestamp).ToList();
         }
         
         return messages;
@@ -81,12 +85,35 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         return message;
     }
 
+    public async Task<bool> UpdateSeenStatus(List<Message> messages)
+    {
+        foreach (var message in messages)
+        {
+            if (message.SeenByReceiver)
+            {
+                var filter = Builders<Message>.Filter.Eq("_id", message.MessageId);
+                var update = Builders<Message>.Update.Set("SeenByReceiver", true);
+                
+                try
+                {
+                    await _messagesCollection.UpdateOneAsync(filter, update);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private async Task<int> GetMaxId()
     {
         var filter = Builders<Message>.Filter.Empty;
         var sort = Builders<Message>.Sort.Descending("MessageId");
         
-        var result = _messagesCollection.Find(filter).Sort(sort).Limit(1).FirstOrDefault();
+        var result = await _messagesCollection.Find(filter).Sort(sort).Limit(1).FirstOrDefaultAsync();
         return result?.MessageId ?? 0;
         
     }

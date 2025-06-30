@@ -8,4 +8,5 @@ public interface IUserRepository
     Task<User?> CreateUser(User user);
     Task<List<User>?> GetQueriedUsers(string query);
     Task<User?> GetUserByUserIdAsync(int userId);
+    Task<List<User>?> GetUsersForConversationByUserIdAsync(List<int> userIds);
 }

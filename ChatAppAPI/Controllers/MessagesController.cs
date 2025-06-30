@@ -39,13 +39,22 @@ public class MessagesController : ControllerBase
      [Route("createMessage")]
      public async Task<IActionResult> CreateMessage(Message message)
      {
-          
           message.Timestamp = DateTime.UtcNow;
           
           var result = await _messagesRepository.SendMessage(message);
           if (result != 0)
                return Ok(result);
           return Conflict();
+     }
+
+     [HttpPost]
+     [Route("updateSeen")]
+     public async Task<IActionResult> UpdateSeenStatus(List<Message> messages)
+     {
+          var result = await _messagesRepository.UpdateSeenStatus(messages);
+          if(result)
+               return Ok();
+          return BadRequest();
      }
      
 }

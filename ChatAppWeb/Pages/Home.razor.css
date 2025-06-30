@@ -1,6 +1,33 @@
 ﻿.usersDiv{
-    min-width:285px;
+    min-width: 285px;
     outline: black solid 1px;
+    display: flex;
+    flex-direction: column;
+}
+
+.convoBanner{
+    height:75px;
+    outline: black solid 1px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    
+    img{
+        width: 50px;
+        height: 50px;
+        border-radius: 140px;
+        margin-right: 10px;
+        margin-left: 10px;
+    }
+}
+
+#seenPicture{
+    width: 25px;
+    height: 25px;
+    border-radius: 140px;
+    margin-left: auto;
+    display: block;
+    margin-top: 5px;
 }
 
 .userSearchDiv{
@@ -11,6 +38,7 @@
     flex-wrap: wrap;
     align-content: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .messagesDiv{
@@ -43,6 +71,7 @@
     justify-content: center;
     flex-wrap: wrap;
     align-content: center;
+    flex-shrink: 0;
 }
 
 ::deep .inputMessage{
@@ -91,17 +120,82 @@
 }
 .userCard:hover{
     cursor: pointer;
-    background-color: grey;
+    background-color: #d7d7d7;
 }
 
 .messagesContainer{
     height: 100%;
+    padding: 10px;
 }
 
-.userMessage{
+.userMessage {
+    background-color: #de62ff;
+    border-radius: 2em;
+    max-width: 70%;
+    width: fit-content;
+    padding: 10px;
+    margin-left: auto;
+}
+.bufferDiv{
+    margin-bottom: 30px;
+    margin-right: 2px;
+}
     
-}
-
 .receiverMessage{
+    background-color: #d3d3d3;
+    border-radius: 2em;
+    max-width: 70%;
+    width: fit-content;
+    margin-right: auto;
+    margin-bottom: 30px;
+    margin-left: 2px;
+    padding: 10px;
+}
+
+.messageContent{
     
+}
+
+.messageTimestamp{
+    margin-left: auto;
+    margin-right: auto;
+    display: table;
+}
+
+.conversationsDiv{
+    height: 100%;
+}
+
+.convoCard {
+    padding: 5px;
+    display: flex;
+    
+    img {
+        width: 50px;
+        height: 50px;
+        border-radius: 140px;
+        margin-right: 10px;
+    }
+
+    span {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+}
+
+.convoCard:hover{
+    cursor: pointer;
+    background-color: #d7d7d7;
+}
+
+
+.convoCardBuffer{
+    display: flex;
+    align-items: flex-start;
+    min-width: 0;
+    flex-direction: column;
+    flex-wrap: wrap;
 }

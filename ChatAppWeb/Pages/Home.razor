@@ -8,94 +8,160 @@
 
 <PageTitle>Messages</PageTitle>
 
+<!-- Todo: Conversations updates wrong, if you write to yourself, something wrong happens
+    2. Update last conversations message in GUI when you send a message
+ -->
+
 @if (_currentUser == null)
 {
     <p>Authenticating...</p>
 }
 else
 {
-    <div class="main">
-        
-        <div class="usersDiv">
+    if (messageNotSent)
+    {
+        <div class="alert alert-danger" role="alert">
+            Message could not be sent
+        </div>
+    } else if (messageSentNotFound)
+    {
+        <div class="alert alert-danger" role="alert">
+            Message could not be found in the database
+        </div>
+    }
+    else
+    {
+        <div class="main">
             
-            <div class="userSearchDiv">
-                <InputText @bind-Value="_newUserSearch" id="userSearchInput"
-                           @oninput="OnSearchChange"
-                           @onfocus="ShowDropdown"
-                           placeholder="Start new conversation..." class="inputStyle"></InputText>
-                @if (showDropdown)
-                {
-                    <div class="searchedPeoplesDropdown" id="userSearchDropdown">
-                        @if (_searchedUsers.Count == 0 && string.IsNullOrWhiteSpace(_newUserSearch))
-                        {
-                            <p>Begin searching for a user to connect with</p>
-                        }
-                        else
-                        {
-                            if (_searchedUsers.Count > 0)
+            <div class="usersDiv">
+                
+                <div class="userSearchDiv">
+                    <InputText @bind-Value="_newUserSearch" id="userSearchInput"
+                               @oninput="OnSearchChange"
+                               @onfocus="ShowDropdown"
+                               placeholder="Start new conversation..." class="inputStyle"></InputText>
+                    @if (showDropdown)
+                    {
+                        <div class="searchedPeoplesDropdown" id="userSearchDropdown">
+                            @if (_searchedUsers.Count == 0 && string.IsNullOrWhiteSpace(_newUserSearch))
                             {
-                                @foreach (var user in _searchedUsers)
-                                {
-                                    @if (!string.IsNullOrWhiteSpace(_newUserSearch))
-                                    {
-                                        <div @onclick="() => StartConvoWith(user.UserId)" class="userCard">
-                                            <img alt="profile pic" src="@(user.ProfilePicture ?? "Pictures/noPic.png")"/>
-                                            <span>@user.FirstName @user.LastName</span>
-                                        </div>
-                                    }
-                                }
+                                <p>Begin searching for a user to connect with</p>
                             }
                             else
                             {
-                                <p>No user with name found</p>
+                                if (_searchedUsers.Count > 0)
+                                {
+                                    @foreach (var user in _searchedUsers)
+                                    {
+                                        @if (!string.IsNullOrWhiteSpace(_newUserSearch))
+                                        {
+                                            <div @onclick="() => StartConvoWith(user.UserId)" class="userCard">
+                                                <img alt="profile pic" src="@(user.ProfilePicture ?? "Pictures/noPic.png")"/>
+                                                <span>@user.FirstName @user.LastName</span>
+                                            </div>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    <p>No user with name found</p>
+                                }
                             }
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-
-        <div class="messagesDiv">
-            
-            <div class="messagesContainer">
-                @if (userFound && hasMessages && clickedUser)
-                {
-                    foreach (var message in _currentConvoMessages)
+                        </div>
+                    }
+                </div>
+                
+                <div class="conversationsDiv">
+                    @if (hasPreviousConversations)
                     {
-                        if (message.Sender == _currentUser.UserId)
+                        // Two List, one for conversations, other for user tied to the conversations.
+                        // Determines whether to show current users name, or other user
+                        @foreach(var (x, y) in _previousConversations.Zip(_usersForPreviousConversations))
                         {
-                            <div class="userMessage">
-                                @message.Content
-                                @message.Timestamp
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="receiverMessage">
-                                @message.Content
-                                @message.Timestamp
+                            <div class="convoCard" @onclick="() => OpenConvoCard(x.PersonAId, x.PersonBId)">
+                                <img alt="convo profile pic" src="@(y.ProfilePicture ?? "Pictures/noPic.png")"/>
+                                
+                                <div class="convoCardBuffer">
+                                    <span>@y.FirstName @y.LastName</span>
+                                    
+                                    @if (x.SenderId != _currentUser.UserId && x.SeenByReceiver)
+                                    {
+                                        <span style="font-size: 14px; color: grey">@y.FirstName @y.LastName: @x.LastMessage</span>
+                                    } 
+                                    else if (x.SenderId != _currentUser.UserId && x.SeenByReceiver == false)
+                                    {
+                                        <span style="font-size: 14px; color: black"><b>@y.FirstName @y.LastName: @x.LastMessage</b></span>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size: 14px; color: grey">You: @x.LastMessage</span>
+                                    }
+                                </div>
                             </div>
                         }
                     }
-                }else if (!userFound && clickedUser)
-                {
-                    <p>This user does not exist??</p>
-                } else if (!hasMessages && clickedUser)
-                {
-                    <p>Begin your conversation with @_otherPerson.FirstName @_otherPerson.LastName</p>
-                }
+                </div>
+                
             </div>
-            
-            <div class="inputDiv">
-                <InputText @bind-Value="newText" class="inputMessage" placeholder="Send message"></InputText>
-                <svg @onclick="SendMessage" class="sendIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
-                </svg>
-                <InputFile OnChange="HandleFile"></InputFile>
-            </div>
-        </div>
 
-    </div>
+            <div class="messagesDiv">
+                <div class="convoBanner">
+                    @if (userFound)
+                    {
+                        <img alt="profile pic" src="@(_otherPerson.ProfilePicture ?? "Pictures/noPic.png")"/>
+                        <span>@_otherPerson.FirstName @_otherPerson.LastName</span>
+                    }
+                </div>
+                <div class="messagesContainer">
+                    @if (userFound && hasMessages && clickedUser && _currentConvoMessages.Count > 0)
+                    {
+                        foreach (var message in _currentConvoMessages)
+                        {
+                            if (timeMap.Contains(message.MessageId))
+                            {
+                                <span class="messageTimestamp">@(message.Timestamp.Day == DateTime.Now.Day ? message.Timestamp.ToString("HH:mm") : message.Timestamp.ToString("dd-MMMM HH:mm"))</span>
+                            }
+                            
+                            if (message.Sender == _currentUser.UserId)
+                            {
+                                <div class="bufferDiv">
+                                    <div class="userMessage" @onclick="() => ShowTimestamp(message.MessageId)">
+                                        <span class="messageContent">@message.Content</span>
+                                    </div>
+                                    @if (message.MessageId == lastSeenMessageByReceiver)
+                                    {
+                                        <img id="seenPicture" alt="picture of other person" src=@(_otherPerson.ProfilePicture ?? "Pictures/noPic.png")/>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="receiverMessage" @onclick="() => ShowTimestamp(message.MessageId)">
+                                    <span class="messageContent">@message.Content</span>
+                                </div>
+                            }
+                        }
+                    }else if (!userFound && clickedUser)
+                    {
+                        <p>This user does not exist??</p>
+                    } else if (!hasMessages && clickedUser)
+                    {
+                        <p>Begin your conversation with @_otherPerson.FirstName @_otherPerson.LastName</p>
+                    }
+                </div>
+                
+                <div class="inputDiv">
+                    <InputText @bind-Value="newText" @onkeyup="Enter" class="inputMessage" placeholder="Send message"></InputText>
+                    <svg @onclick="SendMessage" class="sendIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
+                    </svg>
+                    <InputFile OnChange="HandleFile"></InputFile>
+                </div>
+            </div>
+
+        </div>
+        
+    }
 }
 
 
@@ -112,14 +178,21 @@ else
     string? fileString;
     
     string noPicString = "Pictures/noPic.png";
-    
+
+    bool hasPreviousConversations = false;
+    Conversation currentConvo;
+    List<Conversation> _previousConversations;
+    List<User> _usersForPreviousConversations;
     List<Message> _currentConvoMessages;
     bool hasMessages;
     bool userFound;
     bool clickedUser;
     bool messageNotSent;
     bool messageSentNotFound;
+    int lastSeenMessageByReceiver = 0;
 
+    HashSet<int> timeMap = new HashSet<int>();
+    
     bool showDropdown;
 
     DotNetObjectReference<Home>? dotNetHelper;
@@ -147,6 +220,19 @@ else
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
         if (_currentUser == null)
             NavMan.NavigateTo("/login");
+
+        var response = await Client.GetAsync($"conversations/getConversations/{_currentUser.UserId}");
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            _previousConversations = new List<Conversation>();
+            _usersForPreviousConversations = new List<User>();
+        } else if (response.IsSuccessStatusCode)
+        {
+            var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
+            _previousConversations = conversationsContainer.Conversations;
+            _usersForPreviousConversations = conversationsContainer.Users;
+            hasPreviousConversations = true;
+        }
     }
 
     private async Task OnSearchChange(ChangeEventArgs e)
@@ -180,6 +266,14 @@ else
             fileString = null;
         }
     }
+    
+    public void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            SendMessage();
+        }
+    }
 
     private async Task SendMessage()
     {
@@ -209,7 +303,23 @@ else
             if (newResponse.IsSuccessStatusCode)
             {
                 _currentConvoMessages.Add(await newResponse.Content.ReadFromJsonAsync<Message>());
+                currentConvo.LastMessage = newText;
+                currentConvo.SenderId = _currentUser.UserId;
+                currentConvo.SeenByReceiver = false;
+                
+                if (!hasMessages)
+                    hasMessages = true;
+                
+                var update = await Client.PostAsJsonAsync("conversations/update", currentConvo);
+                if (!update.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("Something went wrong updating conversations with new text");
+                }
+
+                _previousConversations.Find(x => x.ConversationId == currentConvo.ConversationId).LastMessage = newText;
+                
                 newText = "";
+                    
                 StateHasChanged();
             }
             else
@@ -260,12 +370,76 @@ else
             StateHasChanged();
             return;
         }
+
+        var convoResponse = await Client.GetAsync($"conversations/get/{_currentUser.UserId}/{userId}");
+        if (convoResponse.StatusCode == HttpStatusCode.NotFound)
+        {
+            var newConvo = new Conversation
+            {
+                ConversationId = 0,
+                LastMessage = "",
+                PersonAId = _currentUser.UserId,
+                PersonBId = userId,
+                SeenByReceiver = false,
+                SenderId = _currentUser.UserId
+            };
+            var newConvoResponse = await Client.PostAsJsonAsync("conversations/create", newConvo);
+
+            if (newConvoResponse.IsSuccessStatusCode)
+            {
+                currentConvo = await newConvoResponse.Content.ReadFromJsonAsync<Conversation>();
+                _previousConversations.Add(currentConvo);
+                _usersForPreviousConversations.Add(_otherPerson);
+            }
+            else
+            {
+                Console.WriteLine("An error occured trying to create a new conversation");
+            }
+            StateHasChanged();
+            
+        } else if (convoResponse.IsSuccessStatusCode)
+        {
+            currentConvo = await convoResponse.Content.ReadFromJsonAsync<Conversation>();
+            if (currentConvo.SenderId != _currentUser.UserId)
+            {
+                currentConvo.SeenByReceiver = true;
+                _previousConversations.Find(x => x.ConversationId == currentConvo.ConversationId).SeenByReceiver = true;
+                
+                var update = await Client.PostAsJsonAsync($"conversations/update", currentConvo);
+                if (!update.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("An error occured trying to update conversation");
+                }
+            }
+        }
         
         var response = await Client.GetAsync($"messages/getMessages/{_currentUser.UserId}/{userId}");
 
         if (response.IsSuccessStatusCode)
         {
             _currentConvoMessages = await response.Content.ReadFromJsonAsync<List<Message>>();
+            
+            // Find the last seen message by other person
+            for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+            {
+                if (_currentConvoMessages[i].Sender == _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
+                {
+                    lastSeenMessageByReceiver = _currentConvoMessages[i].MessageId;
+                    break;
+                }
+            }
+
+            // Update seenByReceiver status for messages received by user
+            for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+            {
+                if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == false)
+                {
+                    _currentConvoMessages[i].SeenByReceiver = true;
+                } else if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
+                {
+                    break;
+                }
+            }
             hasMessages = true;
             StateHasChanged();
         } else if (response.StatusCode == HttpStatusCode.Conflict)
@@ -277,6 +451,34 @@ else
         
         clickedUser = true;
 
+        if (_currentConvoMessages.Count > 0)
+            await Client.PostAsJsonAsync("messages/updateSeen", _currentConvoMessages);
+
+    }
+
+    private void ShowTimestamp(int messageMessageId)
+    {
+
+        if (!timeMap.Add(messageMessageId))
+        {
+            timeMap.Remove(messageMessageId);
+        }
+
+        if (timeMap.Count > 1)
+        {
+            timeMap.Clear();
+            timeMap.Add(messageMessageId);
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task OpenConvoCard(int personA, int personB)
+    {
+        if (personA == _currentUser.UserId)
+            await StartConvoWith(personB);
+        else
+            await StartConvoWith(personA);
     }
 
 }

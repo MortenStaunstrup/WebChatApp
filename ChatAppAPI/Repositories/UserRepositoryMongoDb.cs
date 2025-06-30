@@ -131,6 +131,19 @@ public class UserRepositoryMongoDb : IUserRepository
         return await _userCollection.Find(filter).Project<User>(projection).FirstOrDefaultAsync();
     }
 
+    public async Task<List<User>?> GetUsersForConversationByUserIdAsync(List<int> userIds)
+    {
+        List<User> users = new List<User>();
+        foreach (var userId in userIds)
+        {
+            var filter = Builders<User>.Filter.Eq("UserId", userId);
+            var projection = Builders<User>.Projection.Exclude("Password").Exclude("PhoneNumber").Exclude("Email");
+            var user =  await _userCollection.Find(filter).Project<User>(projection).FirstOrDefaultAsync();
+            users.Add(user);
+        }
+        return users;
+    }
+
     private async Task<int> GetMaxId()
     {
         var filter = Builders<User>.Filter.Empty;

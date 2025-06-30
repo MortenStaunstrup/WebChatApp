@@ -1,5 +1,4 @@
 # WebChatApp
-My own try to make a chat app, inspired heavily by 'Messenger'
+This project represents my initial attempt at developing a chat application, drawing significant inspiration from 'Messenger.'
 
-In my efforts to try and make a chatting app, I figured that Restfull API architecture was maybe not the best idea to build it on.
-Instead, using 'Web Sockets' would have been better. However I missed that detail before making this app
+During the development process, I initially chose to implement a RESTful API architecture. However, I later realized that this approach may not be optimal for real-time communication features typically required in chat applications. In retrospect, leveraging Web Sockets would have been a more suitable solution. Nonetheless, this experience has provided valuable insights for my future projects.

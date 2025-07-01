@@ -73,6 +73,17 @@ public class ConversationRepositoryMongoDb : IConversationRepository
 
     public async Task<Conversation?> GetConversation(int userId, int otherPersonId)
     {
+
+        if (userId == otherPersonId)
+        {
+            var sameFilter = Builders<Conversation>.Filter.Eq("PersonAId", userId);
+            var sameFilter2 = Builders<Conversation>.Filter.Eq("PersonBId", userId);
+            var andFilter = Builders<Conversation>.Filter.And(sameFilter, sameFilter2);
+            
+            var sameResult = await _conversations.Find(andFilter).FirstOrDefaultAsync();
+            return sameResult;
+        }
+        
         var filter = Builders<Conversation>.Filter.Eq("PersonAId", userId);
         var filter2 = Builders<Conversation>.Filter.Eq("PersonBId", userId); 
         var orFilter = Builders<Conversation>.Filter.Or(filter, filter2);

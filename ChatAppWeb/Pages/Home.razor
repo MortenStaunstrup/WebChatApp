@@ -8,10 +8,6 @@
 
 <PageTitle>Messages</PageTitle>
 
-<!-- Todo: Conversations updates wrong, if you write to yourself, something wrong happens
-    2. Update last conversations message in GUI when you send a message
- -->
-
 @if (_currentUser == null)
 {
     <p>Authenticating...</p>
@@ -315,8 +311,11 @@ else
                 {
                     Console.WriteLine("Something went wrong updating conversations with new text");
                 }
-
-                _previousConversations.Find(x => x.ConversationId == currentConvo.ConversationId).LastMessage = newText;
+                
+                var index = _previousConversations.FindIndex(x => x.ConversationId == currentConvo.ConversationId);
+                _previousConversations[index].LastMessage = newText;
+                _previousConversations[index].SenderId = _currentUser.UserId;
+                _previousConversations[index].SeenByReceiver = false;
                 
                 newText = "";
                     

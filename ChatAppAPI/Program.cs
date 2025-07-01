@@ -10,7 +10,6 @@ Env.Load();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
 
 
 builder.Services.AddSingleton<IUserRepository, UserRepositoryMongoDb>();
@@ -26,6 +25,7 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin();
     });
 });
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 

@@ -11,7 +11,7 @@ builder.Services.AddBlazoredLocalStorageAsSingleton();
 
 builder.Services.AddScoped(sp => new HttpClient
 {
-    BaseAddress = new Uri("http://localhost:5154/api/")
+    BaseAddress = new Uri("https://chatappmeapi.azurewebsites.net/api/")
 });
 
 await builder.Build().RunAsync();

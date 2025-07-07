@@ -8,6 +8,13 @@
 
 <PageTitle>Messages</PageTitle>
 
+<!-- Todo: 
+    1. Make fileupload and download work
+    2. Make a 'My Profile page'
+    3. Sort conversations by 'not seen' and 'seen' and then by timestamp
+    4. Show timestamp on conversations for last message
+-->
+
 @if (_currentUser == null)
 {
     <p>Authenticating...</p>
@@ -102,11 +109,18 @@ else
 
             <div class="messagesDiv">
                 <div class="convoBanner">
-                    @if (userFound)
-                    {
-                        <img alt="profile pic" src="@(_otherPerson.ProfilePicture ?? "Pictures/noPic.png")"/>
-                        <span>@_otherPerson.FirstName @_otherPerson.LastName</span>
-                    }
+                    <div>
+                        @if (userFound)
+                        {
+                            <img alt="profile pic" src="@(_otherPerson.ProfilePicture ?? "Pictures/noPic.png")"/>
+                            <span>@_otherPerson.FirstName @_otherPerson.LastName</span>
+                        }
+                    </div>
+
+                    <div id="logoutLink">
+                        <a href="/logout">Logout</a>
+                    </div>
+
                 </div>
                 <div class="messagesContainer">
                     @if (userFound && hasMessages && clickedUser && _currentConvoMessages.Count > 0)
@@ -214,20 +228,25 @@ else
     protected override async Task OnInitializedAsync()
     {
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
-        if (_currentUser == null)
+        
+        if (_currentUser != null)
+        {
+            var response = await Client.GetAsync($"conversations/getConversations/{_currentUser.UserId}");
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                _previousConversations = new List<Conversation>();
+                _usersForPreviousConversations = new List<User>();
+            } else if (response.IsSuccessStatusCode)
+            {
+                var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
+                _previousConversations = conversationsContainer.Conversations;
+                _usersForPreviousConversations = conversationsContainer.Users;
+                hasPreviousConversations = true;
+            }
+        }
+        else
+        {
             NavMan.NavigateTo("/login");
-
-        var response = await Client.GetAsync($"conversations/getConversations/{_currentUser.UserId}");
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            _previousConversations = new List<Conversation>();
-            _usersForPreviousConversations = new List<User>();
-        } else if (response.IsSuccessStatusCode)
-        {
-            var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
-            _previousConversations = conversationsContainer.Conversations;
-            _usersForPreviousConversations = conversationsContainer.Users;
-            hasPreviousConversations = true;
         }
     }
 
@@ -298,7 +317,9 @@ else
             var newResponse = await Client.GetAsync($"messages/getSentMessage/{sentMessageId}");
             if (newResponse.IsSuccessStatusCode)
             {
-                _currentConvoMessages.Add(await newResponse.Content.ReadFromJsonAsync<Message>());
+                var message = await newResponse.Content.ReadFromJsonAsync<Message>();
+                message.Timestamp = message.Timestamp.ToLocalTime();
+                _currentConvoMessages.Add(message);
                 currentConvo.LastMessage = newText;
                 currentConvo.SenderId = _currentUser.UserId;
                 currentConvo.SeenByReceiver = false;
@@ -439,6 +460,12 @@ else
                     break;
                 }
             }
+
+            foreach (var message in _currentConvoMessages)
+            {
+                message.Timestamp = message.Timestamp.ToLocalTime();
+            }
+            
             hasMessages = true;
             StateHasChanged();
         } else if (response.StatusCode == HttpStatusCode.Conflict)

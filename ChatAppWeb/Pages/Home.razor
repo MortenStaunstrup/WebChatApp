@@ -388,8 +388,8 @@ else
         
         await hubConnection.StartAsync();
     }
-
-
+    
+    // Called from websocket
     private async Task UpdateCurrentConvo(int receiverId)
     {
         if (receiverId == _otherPerson.UserId)
@@ -655,8 +655,11 @@ else
         clickedUser = true;
 
         if (_currentConvoMessages.Count > 0)
+        {
             await Client.PostAsJsonAsync("messages/updateSeen", _currentConvoMessages);
+            await hubConnection.InvokeAsync("UpdateReceiverMessages", userId, _currentUser.UserId);
 
+        }
     }
 
     private void ShowTimestamp(int messageMessageId)

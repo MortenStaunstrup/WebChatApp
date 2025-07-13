@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using System.Net
+@using Microsoft.AspNetCore.SignalR.Client
 @using Core
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager NavMan
@@ -13,6 +14,7 @@
     2. Make a 'My Profile page'
     3. Sort conversations by 'not seen' and 'seen' and then by timestamp
     4. Show timestamp on conversations for last message
+    5. Reduce redundancy in code (make some code into functions)
 -->
 
 @if (_currentUser == null)
@@ -191,8 +193,8 @@ else
 
     bool hasPreviousConversations = false;
     Conversation currentConvo;
-    List<Conversation> _previousConversations;
-    List<User> _usersForPreviousConversations;
+    List<Conversation> _previousConversations = new List<Conversation>();
+    List<User> _usersForPreviousConversations = new List<User>();
     List<Message> _currentConvoMessages;
     bool hasMessages;
     bool userFound;
@@ -205,6 +207,8 @@ else
     
     bool showDropdown;
 
+    HubConnection? hubConnection;
+    
     DotNetObjectReference<Home>? dotNetHelper;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -232,17 +236,15 @@ else
         if (_currentUser != null)
         {
             var response = await Client.GetAsync($"conversations/getConversations/{_currentUser.UserId}");
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                _previousConversations = new List<Conversation>();
-                _usersForPreviousConversations = new List<User>();
-            } else if (response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
             {
                 var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
                 _previousConversations = conversationsContainer.Conversations;
                 _usersForPreviousConversations = conversationsContainer.Users;
                 hasPreviousConversations = true;
             }
+
+            await ConnectToWebSocketServer();
         }
         else
         {
@@ -328,18 +330,21 @@ else
                     hasMessages = true;
                 
                 var update = await Client.PostAsJsonAsync("conversations/update", currentConvo);
-                if (!update.IsSuccessStatusCode)
+                if (update.IsSuccessStatusCode)
                 {
-                    Console.WriteLine("Something went wrong updating conversations with new text");
+                    var index = _previousConversations.FindIndex(x => x.ConversationId == currentConvo.ConversationId);
+                    _previousConversations[index].LastMessage = newText;
+                    _previousConversations[index].SenderId = _currentUser.UserId;
+                    _previousConversations[index].SeenByReceiver = false;
+                    
+                    if (hubConnection is not null)
+                        await hubConnection.InvokeAsync("UpdateReceiverMessages", _otherPerson.UserId, _currentUser.UserId);
                 }
                 
-                var index = _previousConversations.FindIndex(x => x.ConversationId == currentConvo.ConversationId);
-                _previousConversations[index].LastMessage = newText;
-                _previousConversations[index].SenderId = _currentUser.UserId;
-                _previousConversations[index].SeenByReceiver = false;
+                Console.WriteLine("Something went wrong updating conversations with new text");
                 
                 newText = "";
-                    
+                
                 StateHasChanged();
             }
             else
@@ -372,6 +377,177 @@ else
         StateHasChanged();
     }
 
+    private async Task ConnectToWebSocketServer()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl($"http://localhost:5150/chatMe?userid={_currentUser.UserId}")
+            .Build();
+
+        hubConnection.On<int>("UpdateMessages", UpdateMessages);
+        hubConnection.On<int>("UpdateCurrentConvo", UpdateCurrentConvo);
+        
+        await hubConnection.StartAsync();
+    }
+
+
+    private async Task UpdateCurrentConvo(int receiverId)
+    {
+        if (receiverId == _otherPerson.UserId)
+        {
+            var convoResponse = await Client.GetAsync($"conversations/get/{_currentUser.UserId}/{_otherPerson.UserId}");
+            
+            currentConvo = await convoResponse.Content.ReadFromJsonAsync<Conversation>();
+            if (currentConvo.SenderId != _currentUser.UserId)
+            {
+                currentConvo.SeenByReceiver = true;
+                _previousConversations.Find(x => x.ConversationId == currentConvo.ConversationId).SeenByReceiver = true;
+                
+                var update = await Client.PostAsJsonAsync($"conversations/update", currentConvo);
+                if (!update.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("An error occured trying to update conversation");
+                }
+            }
+            
+            var messagesResponse = await Client.GetAsync($"messages/getMessages/{_currentUser.UserId}/{receiverId}");
+
+            if (messagesResponse.IsSuccessStatusCode)
+            {
+                _currentConvoMessages = await messagesResponse.Content.ReadFromJsonAsync<List<Message>>();
+            
+                // Find the last seen message by other person
+                for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+                {
+                    if (_currentConvoMessages[i].Sender == _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
+                    {
+                        lastSeenMessageByReceiver = _currentConvoMessages[i].MessageId;
+                        break;
+                    }
+                }
+
+                // Update seenByReceiver status for messages received by user
+                for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+                {
+                    if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == false)
+                    {
+                        _currentConvoMessages[i].SeenByReceiver = true;
+                    } else if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
+                    {
+                        break;
+                    }
+                }
+
+                foreach (var message in _currentConvoMessages)
+                {
+                    message.Timestamp = message.Timestamp.ToLocalTime();
+                }
+            
+                hasMessages = true;
+                StateHasChanged();
+            } else if (messagesResponse.StatusCode == HttpStatusCode.Conflict)
+            {
+                _currentConvoMessages = new List<Message>();
+                hasMessages = false;
+                StateHasChanged();
+            }
+        
+            clickedUser = true;
+
+            if (_currentConvoMessages.Count > 0)
+                await Client.PostAsJsonAsync("messages/updateSeen", _currentConvoMessages);
+            
+        }
+        StateHasChanged();
+        Console.WriteLine("Messages Updated");
+    }
+    
+    // Called from WebSocket
+    private async Task UpdateMessages(int senderId)
+    {
+        var response = await Client.GetAsync($"conversations/getConversations/{_currentUser.UserId}");
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            _previousConversations = new List<Conversation>();
+            _usersForPreviousConversations = new List<User>();
+        } else if (response.IsSuccessStatusCode)
+        {
+            var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
+            _previousConversations = conversationsContainer.Conversations;
+            _usersForPreviousConversations = conversationsContainer.Users;
+            hasPreviousConversations = true;
+        }
+
+        if (senderId == _otherPerson.UserId)
+        {
+            var convoResponse = await Client.GetAsync($"conversations/get/{_currentUser.UserId}/{_otherPerson.UserId}");
+            
+            currentConvo = await convoResponse.Content.ReadFromJsonAsync<Conversation>();
+            if (currentConvo.SenderId != _currentUser.UserId)
+            {
+                currentConvo.SeenByReceiver = true;
+                _previousConversations.Find(x => x.ConversationId == currentConvo.ConversationId).SeenByReceiver = true;
+                
+                var update = await Client.PostAsJsonAsync($"conversations/update", currentConvo);
+                if (!update.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("An error occured trying to update conversation");
+                }
+            }
+            
+            var messagesResponse = await Client.GetAsync($"messages/getMessages/{_currentUser.UserId}/{senderId}");
+
+            if (messagesResponse.IsSuccessStatusCode)
+            {
+                _currentConvoMessages = await messagesResponse.Content.ReadFromJsonAsync<List<Message>>();
+            
+                // Find the last seen message by other person
+                for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+                {
+                    if (_currentConvoMessages[i].Sender == _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
+                    {
+                        lastSeenMessageByReceiver = _currentConvoMessages[i].MessageId;
+                        break;
+                    }
+                }
+
+                // Update seenByReceiver status for messages received by user
+                for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+                {
+                    if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == false)
+                    {
+                        _currentConvoMessages[i].SeenByReceiver = true;
+                    } else if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
+                    {
+                        break;
+                    }
+                }
+
+                foreach (var message in _currentConvoMessages)
+                {
+                    message.Timestamp = message.Timestamp.ToLocalTime();
+                }
+            
+                hasMessages = true;
+                StateHasChanged();
+            } else if (messagesResponse.StatusCode == HttpStatusCode.Conflict)
+            {
+                _currentConvoMessages = new List<Message>();
+                hasMessages = false;
+                StateHasChanged();
+            }
+        
+            clickedUser = true;
+
+            if (_currentConvoMessages.Count > 0)
+                await Client.PostAsJsonAsync("messages/updateSeen", _currentConvoMessages);
+            
+            await hubConnection.InvokeAsync("ShowSeen", _currentUser.UserId, _otherPerson.UserId);
+
+        }
+        StateHasChanged();
+        Console.WriteLine("Messages Updated");
+    }
+    
     private async Task StartConvoWith(int userId)
     {
         showDropdown = false;
@@ -410,6 +586,7 @@ else
                 currentConvo = await newConvoResponse.Content.ReadFromJsonAsync<Conversation>();
                 _previousConversations.Add(currentConvo);
                 _usersForPreviousConversations.Add(_otherPerson);
+                hasPreviousConversations = true;
             }
             else
             {

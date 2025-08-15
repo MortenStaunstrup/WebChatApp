@@ -11,10 +11,11 @@
 
 <!-- Todo: 
     1. Make fileupload and download work
-    2. Make a 'My Profile page'
     3. Sort conversations by 'not seen' and 'seen' and then by timestamp
     4. Show timestamp on conversations for last message
     5. Reduce redundancy in code (make some code into functions)
+    6. Make the app work with phone
+    7. Screen resolution on create profile
 -->
 
 @if (_currentUser == null)
@@ -118,9 +119,15 @@ else
                             <span>@_otherPerson.FirstName @_otherPerson.LastName</span>
                         }
                     </div>
+                    
+                    <div style="display: flex">
+                        <div id="myProfileLink">
+                            <a href="/myprofile">My Profile</a>
+                        </div>
 
-                    <div id="logoutLink">
-                        <a href="/logout">Logout</a>
+                        <div id="logoutLink">
+                            <a href="/logout">Logout</a>
+                        </div>
                     </div>
 
                 </div>

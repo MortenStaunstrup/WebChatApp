@@ -1,0 +1,203 @@
+﻿@page "/myprofile"
+@using System.Net
+@using Core
+@inject NavigationManager NavMan
+@inject HttpClient Client
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+<PageTitle>My Profile</PageTitle>
+
+@if (loaded)
+{
+    <div class="wholePage">
+
+        <EditForm EditContext="EditContext" OnInvalidSubmit="HandleInvalidSubmit" OnValidSubmit="HandleValidSubmit" FormName="Register user" class="editForm">
+            <DataAnnotationsValidator></DataAnnotationsValidator>
+            
+            @if (error)
+            {
+                <div class="alert alert-danger" role="alert">
+                    Oops, something went wrong
+                </div>
+            }
+            
+            @if (success)
+            {
+                <div class="alert alert-success" role="alert">
+                    Successfully updated profile
+                </div>
+            }
+            
+            <h1 style="text-align: center; margin-bottom: 20px;">My Profile</h1>
+            
+            <div id="profileDiv">
+                <img id="profilePic" alt="Projected profile image" src="@profilePic"/>
+            </div>
+            
+            <div class="inputDiv">
+                <InputFile OnChange="HandleFile" accept=".jpg,.jpeg,.png,.webp"></InputFile>
+            </div>
+            
+            <div class="inputDiv">
+                <label>Firstname</label>
+                <InputText class="inputStyle" placeholder="Firstname" @bind-Value="user.FirstName"></InputText>
+                <ValidationMessage For="() => user.FirstName"></ValidationMessage>
+            </div>
+
+            <div class="inputDiv">
+                <label>Lastname</label>
+                <InputText class="inputStyle" placeholder="Lastname" @bind-Value="user.LastName"></InputText>
+                <ValidationMessage For="() => user.LastName"></ValidationMessage>
+            </div>
+
+            <div class="inputDiv">
+                <label>Email</label>
+                <InputText class="inputStyle" placeholder="Email" @bind-Value="user.Email"></InputText>
+                <ValidationMessage For="() => user.Email"></ValidationMessage>
+            </div>
+
+            <div class="inputDiv">
+                <label>Phone number</label>
+                <InputText class="inputStyle" placeholder="Phone number" @bind-Value="user.PhoneNumber"></InputText>
+                <ValidationMessage For="() => user.PhoneNumber"></ValidationMessage>
+            </div>
+
+            <div id="buttonSubmitDiv">
+                <button class="btn btn-primary" id="registerButton" type="submit">Update</button>
+
+            </div>
+            <p style="color: red;">@userAlExists</p>
+        </EditForm>
+    </div>
+}
+
+@code {
+    ProfileUser user;
+    EditContext EditContext;
+    
+    bool loaded;
+
+    bool error = false;
+    bool success = false;
+
+    string userAlExists = "";
+
+    byte[]? picBytes;
+    string profilePic = "Pictures/noPic.png";
+    
+    // Touches the fields when validation is invalid, otherwise the fields appear as valid and validation errors are not shown when submitting custom validation attributes
+    // Blazor form validation attributes are a buggy mess
+    private void MarkFieldsAsTouched(EditContext editContext)
+    {
+        var properties = editContext.Model.GetType().GetProperties()
+            .Where(prop => prop.CanRead && prop.CanWrite);
+
+        foreach (var prop in properties)
+        {
+            var fieldIdentifier = new FieldIdentifier(editContext.Model, prop.Name);
+            editContext.NotifyFieldChanged(fieldIdentifier);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await LocalStorage.GetItemAsync<ProfileUser>("user");
+        EditContext = new EditContext(user);
+        loaded = true;
+    }
+
+    private async Task HandleFile(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream().CopyToAsync(memoryStream);
+            picBytes = memoryStream.ToArray();
+            profilePic = $"data:image/gif;base64,{Convert.ToBase64String(picBytes)}";
+            StateHasChanged();
+        }
+        else
+        {
+            picBytes = null;
+            profilePic = "Pictures/noPic.png";
+            StateHasChanged();
+        }
+    }
+    
+    // Validation handling
+    private void HandleInvalidSubmit()
+    {
+        MarkFieldsAsTouched(EditContext);
+    }
+
+    private async void HandleValidSubmit()
+    {
+        RemoveWhiteSpaceNames();
+
+        if (picBytes != null)
+            user.ProfilePicture = profilePic;
+
+        var response = await Client.PutAsJsonAsync("auth/update", user);
+
+        if (response.IsSuccessStatusCode)
+        {
+            await LocalStorage.SetItemAsync("user", user);
+            userAlExists = ""; 
+            success = true;
+        }
+        
+        else if (response.StatusCode == HttpStatusCode.Unauthorized)
+            userAlExists = "User with email or phonenumber already exists";
+        
+        else
+            error = true;
+        
+        StateHasChanged();
+        
+    }
+
+    // Removes excess whitespace from firstname and lastname fields
+    private void RemoveWhiteSpaceNames()
+    {
+        var trimmedFirstName = user.FirstName.Trim();
+        var checkedString = "";
+        
+        int concurrentSpaces = 0;
+        foreach (var c in trimmedFirstName)
+        {
+            if(!char.IsWhiteSpace(c))
+                concurrentSpaces = 0;
+            else if (char.IsWhiteSpace(c))
+                concurrentSpaces++;
+
+            if (concurrentSpaces > 1)
+                continue;
+            
+            checkedString += c;
+        }
+
+        user.FirstName = checkedString;
+        
+        var trimmedLastName = user.LastName.Trim();
+        var checkedString2 = "";
+        
+        int concurrentSpaces2 = 0;
+        foreach (var c in trimmedLastName)
+        {
+            if(!char.IsWhiteSpace(c))
+                concurrentSpaces2 = 0;
+            else if (char.IsWhiteSpace(c))
+                concurrentSpaces2++;
+
+            if (concurrentSpaces2 > 1)
+                continue;
+            
+            checkedString2 += c;
+        }
+
+        user.LastName = checkedString2;
+        
+    }
+    
+
+}

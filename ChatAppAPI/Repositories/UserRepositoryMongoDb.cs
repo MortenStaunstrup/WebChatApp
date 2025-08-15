@@ -144,6 +144,74 @@ public class UserRepositoryMongoDb : IUserRepository
         return users;
     }
 
+    private async Task<User?> GetUserByUserIdWithPasswordAsync(int userId)
+    {
+        var filter = Builders<User>.Filter.Eq("UserId", userId);
+        return await _userCollection.Find(filter).FirstOrDefaultAsync();
+    }
+
+    public async Task<int> UpdateUser(ProfileUser user)
+    {
+        var currentUser = await GetUserByUserIdWithPasswordAsync(user.UserId);
+
+        if (user.Email != currentUser.Email)
+        {
+            var result = await UserExists(email: user.Email);
+            if (result)
+                return 0;
+        }
+
+        if (user.PhoneNumber != currentUser.PhoneNumber)
+        {
+            var result = await UserExists(phonenumber: user.PhoneNumber);
+            if (result)
+                return 0;
+        }
+        
+        var filter = Builders<User>.Filter.Eq("UserId", user.UserId);
+
+        try
+        {
+            User newUser = new User
+            {
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                Password = currentUser!.Password,
+                UserId = user.UserId,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                ProfilePicture = user.ProfilePicture
+            };
+            await _userCollection.ReplaceOneAsync(filter, newUser);
+            return 1;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return 2;
+        }
+        
+    }
+
+    private async Task<bool> UserExists(string email = "nothing", string phonenumber = "0")
+    {
+        if (email != "nothing" && !string.IsNullOrEmpty(email))
+        {
+            var filter = Builders<User>.Filter.Eq("Email", email);
+            var result = await _userCollection.Find(filter).AnyAsync();
+            if (result)
+                return true;
+        }
+        if (phonenumber != "0" && !string.IsNullOrEmpty(phonenumber))
+        {
+            var filter  = Builders<User>.Filter.Eq("PhoneNumber", phonenumber);
+            var result = await _userCollection.Find(filter).AnyAsync();
+            if (result)
+                return true;
+        }
+        return false;
+    }
+    
     private async Task<int> GetMaxId()
     {
         var filter = Builders<User>.Filter.Empty;

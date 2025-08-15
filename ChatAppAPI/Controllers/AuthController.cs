@@ -66,6 +66,20 @@ public class AuthController : ControllerBase
             return NotFound();
         return Ok(result);
     }
+
+    [HttpPut]
+    [Route("update")]
+    public async Task<IActionResult> UpdateUser(ProfileUser user)
+    {
+        var result = await userRepository.UpdateUser(user);
+        
+        if (result == 0)
+            return Unauthorized();
+        if (result == 1)
+            return Ok();
+        
+        return BadRequest();
+    }
     
     
 }

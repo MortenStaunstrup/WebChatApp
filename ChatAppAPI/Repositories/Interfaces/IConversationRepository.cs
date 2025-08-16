@@ -8,4 +8,5 @@ public interface IConversationRepository
     Task<Conversation> CreateConversation(Conversation conversation);
     Task<Conversation> UpdateConversation(Conversation conversation);
     Task<Conversation?> GetConversation(int userId, int otherPersonId);
+    Task<Conversation> UpdateConversationSeenStatus(Conversation conversation);
 }

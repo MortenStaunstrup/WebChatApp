@@ -13,6 +13,8 @@ public class Conversation
     public int PersonBId { get; set; }
     [Required]
     public int SenderId { get; set; }
+    [Required]
+    public DateTime Timestamp { get; set; }
     public string? LastMessage { get; set; }
     public bool SeenByReceiver { get; set; }
 }

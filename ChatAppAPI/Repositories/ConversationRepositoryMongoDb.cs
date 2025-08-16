@@ -70,6 +70,38 @@ public class ConversationRepositoryMongoDb : IConversationRepository
             return conversation;
         }
     }
+    
+    public async Task<Conversation> UpdateConversationSeenStatus(Conversation conversation)
+    {
+        var filter = Builders<Conversation>.Filter.Eq("ConversationId",  conversation.ConversationId);
+
+        try
+        {
+            var currentConvo = await GetConversationById(conversation.ConversationId);
+            var newConvo = new Conversation
+            {
+                ConversationId = conversation.ConversationId,
+                PersonAId = conversation.PersonAId,
+                PersonBId = conversation.PersonBId,
+                LastMessage = conversation.LastMessage,
+                SeenByReceiver = conversation.SeenByReceiver,
+                SenderId = conversation.SenderId,
+                Timestamp = currentConvo.Timestamp,
+            };
+            var result = await _conversations.ReplaceOneAsync(filter, newConvo);
+            if (result.IsAcknowledged)
+                return newConvo;
+            
+            conversation.ConversationId = 0;
+            return conversation;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            conversation.ConversationId = 0;
+            return conversation;
+        }
+    }
 
     public async Task<Conversation?> GetConversation(int userId, int otherPersonId)
     {
@@ -98,7 +130,14 @@ public class ConversationRepositoryMongoDb : IConversationRepository
         return result;
         
     }
-    
+
+    private async Task<Conversation?> GetConversationById(int id)
+    {
+        var filter = Builders<Conversation>.Filter.Eq("ConversationId", id);
+        var result = await _conversations.Find(filter).FirstOrDefaultAsync();
+        return result;
+    }
+
     private async Task<int> GetMaxId()
     {
         var filter = Builders<Conversation>.Filter.Empty;

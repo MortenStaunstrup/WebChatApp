@@ -26,6 +26,8 @@ public class ConversationController : ControllerBase
         var conversations = await _conversationRepository.GetConversationsAsync(userId);
         if (conversations == null || conversations.Count == 0)
             return NotFound();
+        
+        conversations = conversations.OrderByDescending(o => o.Timestamp).ToList();
 
         List<int> userIds = new List<int>();
 
@@ -42,6 +44,7 @@ public class ConversationController : ControllerBase
         if (users == null || users.Count < conversations.Count)
             return Conflict();
         
+        
         ConversationsUsersContainer container = new ConversationsUsersContainer
         {
             Users = users,
@@ -57,7 +60,18 @@ public class ConversationController : ControllerBase
     [Route("update")]
     public async Task<IActionResult> UpdateConversation(Conversation conversation)
     {
+        conversation.Timestamp = DateTime.UtcNow;
         var result = await _conversationRepository.UpdateConversation(conversation);
+        if(result.ConversationId == 0)
+            return BadRequest();
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [Route("updateSeenStatus")]
+    public async Task<IActionResult> UpdateConversationSeenStatus(Conversation conversation)
+    {
+        var result = await _conversationRepository.UpdateConversationSeenStatus(conversation);
         if(result.ConversationId == 0)
             return BadRequest();
         return Ok(result);
@@ -78,6 +92,7 @@ public class ConversationController : ControllerBase
     [Route("create")]
     public async Task<IActionResult> CreateConversation(Conversation conversation)
     {
+        conversation.Timestamp = DateTime.UtcNow;
         var result = await _conversationRepository.CreateConversation(conversation);
         if (result.ConversationId == 0)
             return BadRequest();

@@ -11,8 +11,7 @@
 
 <!-- Todo: 
     1. Make fileupload and download work
-    3. Sort conversations by 'not seen' and 'seen' and then by timestamp
-    4. Show timestamp on conversations for last message
+    2. Hash the passwords
     5. Reduce redundancy in code (make some code into functions)
     6. Make the app work with phone
     7. Screen resolution on create profile
@@ -93,14 +92,18 @@ else
                                     @if (x.SenderId != _currentUser.UserId && x.SeenByReceiver)
                                     {
                                         <span style="font-size: 14px; color: grey">@y.FirstName @y.LastName: @x.LastMessage</span>
+                                        <span style="font-size: 14px; color: grey">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
+
                                     } 
                                     else if (x.SenderId != _currentUser.UserId && x.SeenByReceiver == false)
                                     {
                                         <span style="font-size: 14px; color: black"><b>@y.FirstName @y.LastName: @x.LastMessage</b></span>
+                                        <span style="font-size: 14px; color: black">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
                                     }
                                     else
                                     {
                                         <span style="font-size: 14px; color: grey">You: @x.LastMessage</span>
+                                        <span style="font-size: 14px; color: grey">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
                                     }
                                 </div>
                             </div>
@@ -264,6 +267,11 @@ else
         {
             var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
             _previousConversations = conversationsContainer.Conversations;
+
+            foreach (var conversation in _previousConversations)
+            {
+                conversation.Timestamp = conversation.Timestamp.ToLocalTime();
+            }
             _usersForPreviousConversations = conversationsContainer.Users;
             hasPreviousConversations = true;
         }
@@ -281,6 +289,7 @@ else
                 PersonAId = _currentUser.UserId,
                 PersonBId = userId,
                 SeenByReceiver = false,
+                Timestamp = DateTime.Now,
                 SenderId = _currentUser.UserId
             };
             var newConvoResponse = await Client.PostAsJsonAsync("conversations/create", newConvo);
@@ -288,6 +297,7 @@ else
             if (newConvoResponse.IsSuccessStatusCode)
             {
                 currentConvo = await newConvoResponse.Content.ReadFromJsonAsync<Conversation>();
+                currentConvo.Timestamp = currentConvo.Timestamp.ToLocalTime();
                 _previousConversations.Add(currentConvo);
                 _usersForPreviousConversations.Add(_otherPerson);
                 hasPreviousConversations = true;
@@ -306,10 +316,10 @@ else
                 currentConvo.SeenByReceiver = true;
                 _previousConversations.Find(x => x.ConversationId == currentConvo.ConversationId).SeenByReceiver = true;
                 
-                var update = await Client.PostAsJsonAsync($"conversations/update", currentConvo);
+                var update = await Client.PostAsJsonAsync($"conversations/updateSeenStatus", currentConvo);
                 if (!update.IsSuccessStatusCode)
                 {
-                    Console.WriteLine("An error occured trying to update conversation");
+                    Console.WriteLine("An error occured trying to update seen status");
                 }
             }
         }
@@ -444,6 +454,15 @@ else
                     _previousConversations[index].LastMessage = newText;
                     _previousConversations[index].SenderId = _currentUser.UserId;
                     _previousConversations[index].SeenByReceiver = false;
+                    _previousConversations[index].Timestamp = DateTime.UtcNow.ToLocalTime();
+
+                    var zipped = _previousConversations
+                        .Zip(_usersForPreviousConversations, (conv, user) => new { conv, user })
+                        .OrderByDescending(x => x.conv.Timestamp)
+                        .ToList();
+
+                    _previousConversations = zipped.Select(x => x.conv).ToList();
+                    _usersForPreviousConversations = zipped.Select(x => x.user).ToList();
                     
                     if (hubConnection is not null)
                         await hubConnection.InvokeAsync("UpdateReceiverMessages", _otherPerson.UserId, _currentUser.UserId);

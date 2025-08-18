@@ -2,7 +2,7 @@
 A modern chat application inspired by Facebook Messenger, designed to provide real-time messaging with a familiar and intuitive interface.
 
 ## Overview
-ChatAppMe is a full-stack chat app that enables users to send and receive messages in real-time, closely resembling the look and feel of Facebook Messenger. The project began as a client-server application utilizing a standard REST API for message exchange. As the application evolved, I integrated a WebSocket server to enable seamless, instant messaging—bringing a true "live chat" experience to users.
+ChatAppMe is a full-stack chat app that enables users to send and receive messages in real-time, closely resembling the look and feel of Facebook Messenger. The project began as a client-server application utilizing a standard REST API for message exchange. As the application evolved, I integrated a WebSocket server to enable seamless, instant messagin bringing a true "live chat" experience to users.
 
 ## Features
 User authentication (Sign up, log in)

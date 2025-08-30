@@ -36,6 +36,26 @@ public class MessagesController : ControllerBase
      }
 
      [HttpPost]
+     [Route("sendFile")]
+     public async Task<IActionResult> SendFile(MessageFileContainer container)
+     {
+          var result = await _messagesRepository.UploadFile(container.FileName, container.SenderId, container.File);
+          if (!string.IsNullOrWhiteSpace(result))
+               return Ok(result);
+          return BadRequest();
+     }
+
+     [HttpGet]
+     [Route("getFile{messageId:int}")]
+     public async Task<IActionResult> GetFile(int messageId)
+     {
+          var result = await _messagesRepository.DownloadFile(messageId);
+          if (result != null)
+               return Ok(result);
+          return Conflict();
+     }
+
+     [HttpPost]
      [Route("createMessage")]
      public async Task<IActionResult> CreateMessage(Message message)
      {

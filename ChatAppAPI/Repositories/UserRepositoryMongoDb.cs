@@ -2,6 +2,7 @@
 using ChatAppAPI.Repositories.Interfaces;
 using Core;
 using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -13,7 +14,7 @@ public class UserRepositoryMongoDb : IUserRepository
     private readonly IMongoClient _mongoClient;
     private readonly IMongoDatabase _mongoDatabase;
     private readonly IMongoCollection<User> _userCollection;
-
+     
 
     public UserRepositoryMongoDb()
     {
@@ -26,18 +27,44 @@ public class UserRepositoryMongoDb : IUserRepository
         _mongoDatabase = _mongoClient.GetDatabase("ChatApp");
         _userCollection = _mongoDatabase.GetCollection<User>("Users");
     }
+
+    private async Task<User?> GetUserByPhoneOrEmail(string PhoneOrEmail)
+    {
+        var filter = Builders<User>.Filter.Eq("Email", PhoneOrEmail);
+        var user = await _userCollection.Find(filter).FirstOrDefaultAsync();
+        if (user != null)
+            return user;
+        
+        var filter2 = Builders<User>.Filter.Eq("PhoneNumber", PhoneOrEmail);
+        var user2 = await _userCollection.Find(filter2).FirstOrDefaultAsync();
+        if (user2 != null)
+            return user2;
+        return null;
+    }
     
+    // The function above and below can be optimized (if user found with Number, don't try to find it with email in the bottom functoin)
+    // You know what maybe the whole bottom function can be rewritten
     public async Task<User?> TryLogin(string emailOrPhone, string password)
     {
+        PasswordHasher<User> passwordHasher = new PasswordHasher<User>();
+        
+        var userExists = await GetUserByPhoneOrEmail(emailOrPhone);
+        if (userExists == null)
+            return new User { UserId = 0 };
+        
+        var hashedPassword = passwordHasher.VerifyHashedPassword(userExists, userExists.Password, password);
+        if (hashedPassword == PasswordVerificationResult.Failed)
+            return new User { UserId = 0 };
+        
         var emailFilter = Builders<User>.Filter.Eq("Email", emailOrPhone);
         var phoneFilter = Builders<User>.Filter.Eq("PhoneNumber", emailOrPhone);
-        var passwordFilter = Builders<User>.Filter.Eq("Password", password);
+        var passwordFilter = Builders<User>.Filter.Eq("Password", userExists.Password);
         
         var emailPassFilter = Builders<User>.Filter.And(emailFilter, passwordFilter);
 
         try
         {
-            var emailResult = _userCollection.Find(emailPassFilter).FirstOrDefault();
+            var emailResult = await _userCollection.FindAsync(emailPassFilter).Result.FirstOrDefaultAsync();
 
             if (emailResult != null)
                 return emailResult;
@@ -50,7 +77,7 @@ public class UserRepositoryMongoDb : IUserRepository
 
         try
         {
-            var phonePassResult = _userCollection.Find(phoneFilter).FirstOrDefault();
+            var phonePassResult = await _userCollection.FindAsync(phoneFilter).Result.FirstOrDefaultAsync();
             
             if(phonePassResult != null)
                 return phonePassResult;
@@ -69,14 +96,17 @@ public class UserRepositoryMongoDb : IUserRepository
     {
         user.UserId = await GetMaxId() + 1;
         
-        var filter = Builders<User>.Filter.Eq("Email", user.Email);
-        var result = await _userCollection.Find(filter).FirstOrDefaultAsync();
+        var userExists = await UserExists(user.Email, user.PhoneNumber);
         
-        if(result != null)
+        if(userExists)
             return new User(){UserId = 0};
         
         try
         {
+            PasswordHasher<User> passwordHasher = new PasswordHasher<User>();
+            var hashedPassword = passwordHasher.HashPassword(user, user.Password);
+            user.Password = hashedPassword;
+            
             await _userCollection.InsertOneAsync(user);
             user.Password = "";
             return user;

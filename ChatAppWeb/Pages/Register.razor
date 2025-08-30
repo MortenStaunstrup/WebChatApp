@@ -44,7 +44,6 @@
             </div>
 
             <div class="inputDiv">
-                <p style="color: red;">@userAlExists</p>
                 <label>Email</label>
                 <InputText class="inputStyle" placeholder="Email address..." @bind-Value="_model.Email"></InputText>
                 <ValidationMessage For="() => _model.Email"></ValidationMessage>
@@ -74,6 +73,7 @@
                                ValueExpression="() => termsOfUse"></InputCheckbox> <span id="checkBoxSpan">Agree to <a href="/termsofuse"><b>Terms of Use</b></a></span>
             </div>
             <p style="color: red">@termsOfUseError</p>
+            <p style="color: red;">@userAlExists</p>
 
             <div id="buttonSubmitDiv">
                 <button class="btn btn-primary" id="registerButton" type="submit">Register</button>
@@ -161,7 +161,7 @@
             NavMan.NavigateTo("/login");
         else if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            userAlExists = "User with email already exists";
+            userAlExists = "User with email or phonenumber already exists";
             StateHasChanged();
         }
         else

@@ -11,7 +11,11 @@ public class Message
     public int Sender {get; set;}
     [Required]
     public int Receiver {get; set;}
+    [Required]
     public bool SeenByReceiver{ get; set; }
+    [Required]
+    public bool IsFile {get; set;}
+    public string FileURL {get; set;}
     [Required]
     public string Content { get; set; }
     [Required]

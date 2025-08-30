@@ -10,8 +10,8 @@
 <PageTitle>Messages</PageTitle>
 
 <!-- Todo: 
-    1. Make fileupload and download work
-    2. Hash the passwords
+    1. Make file download work
+    2. Error messages show up wrong (can be tested with fileSizeTooLarge)
     5. Reduce redundancy in code (make some code into functions)
     6. Make the app work with phone
     7. Screen resolution on create profile
@@ -23,168 +23,199 @@
 }
 else
 {
-    if (messageNotSent)
-    {
-        <div class="alert alert-danger" role="alert">
-            Message could not be sent
-        </div>
-    } else if (messageSentNotFound)
-    {
-        <div class="alert alert-danger" role="alert">
-            Message could not be found in the database
-        </div>
-    }
-    else
-    {
-        <div class="main">
-            
-            <div class="usersDiv">
-                
-                <div class="userSearchDiv">
-                    <InputText @bind-Value="_newUserSearch" id="userSearchInput"
-                               @oninput="OnSearchChange"
-                               @onfocus="ShowDropdown"
-                               placeholder="Start new conversation..." class="inputStyle"></InputText>
-                    @if (showDropdown)
-                    {
-                        <div class="searchedPeoplesDropdown" id="userSearchDropdown">
-                            @if (_searchedUsers.Count == 0 && string.IsNullOrWhiteSpace(_newUserSearch))
+    <div class="main">
+        
+        @if (messageNotSent)
+        {
+            <div class="alert alert-danger" role="alert">
+                Message could not be sent
+            </div>
+        } else if (messageSentNotFound)
+        {
+            <div class="alert alert-danger" role="alert">
+                Message could not be found in the database
+            </div>
+        } else if (fileCouldNotBeUploaded)
+        {
+            <div class="alert alert-danger" role="alert">
+                File could not be uploaded
+            </div>
+        } else if (fileSizeTooLarge)
+        {
+            <div class="alert alert-danger" role="alert">
+                File size too large
+            </div>
+        } else if (downloadFailed)
+        {
+            <div class="alert alert-danger" role="alert">
+                File could not be downloaded
+            </div>
+        }
+
+        <div class="usersDiv">
+
+            <div class="userSearchDiv">
+                <InputText @bind-Value="_newUserSearch" id="userSearchInput"
+                           @oninput="OnSearchChange"
+                           @onfocus="ShowDropdown"
+                           placeholder="Start new conversation..." class="inputStyle"></InputText>
+                @if (showDropdown)
+                {
+                    <div class="searchedPeoplesDropdown" id="userSearchDropdown">
+                        @if (_searchedUsers.Count == 0 && string.IsNullOrWhiteSpace(_newUserSearch))
+                        {
+                            <p>Begin searching for a user to connect with</p>
+                        }
+                        else
+                        {
+                            if (_searchedUsers.Count > 0)
                             {
-                                <p>Begin searching for a user to connect with</p>
+                                @foreach (var user in _searchedUsers)
+                                {
+                                    @if (!string.IsNullOrWhiteSpace(_newUserSearch))
+                                    {
+                                        <div @onclick="() => StartConvoWith(user.UserId)" class="userCard">
+                                            <img alt="profile pic" src="@(user.ProfilePicture ?? "Pictures/noPic.png")"/>
+                                            <span>@user.FirstName @user.LastName</span>
+                                        </div>
+                                    }
+                                }
                             }
                             else
                             {
-                                if (_searchedUsers.Count > 0)
+                                <p>No user with name found</p>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="conversationsDiv">
+                @if (hasPreviousConversations)
+                {
+                    // Two List, one for conversations, other for user tied to the conversations.
+                    // Determines whether to show current users name, or other user
+                    @foreach (var (x, y) in _previousConversations.Zip(_usersForPreviousConversations))
+                    {
+                        <div class="convoCard" @onclick="() => OpenConvoCard(x.PersonAId, x.PersonBId)">
+                            <img alt="convo profile pic" src="@(y.ProfilePicture ?? "Pictures/noPic.png")"/>
+
+                            <div class="convoCardBuffer">
+                                <span>@y.FirstName @y.LastName</span>
+
+                                @if (x.SenderId != _currentUser.UserId && x.SeenByReceiver)
                                 {
-                                    @foreach (var user in _searchedUsers)
-                                    {
-                                        @if (!string.IsNullOrWhiteSpace(_newUserSearch))
-                                        {
-                                            <div @onclick="() => StartConvoWith(user.UserId)" class="userCard">
-                                                <img alt="profile pic" src="@(user.ProfilePicture ?? "Pictures/noPic.png")"/>
-                                                <span>@user.FirstName @user.LastName</span>
-                                            </div>
-                                        }
-                                    }
+                                    <span style="font-size: 14px; color: grey">@y.FirstName @y.LastName: @x.LastMessage</span>
+                                    <span style="font-size: 14px; color: grey">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
+
+                                }
+                                else if (x.SenderId != _currentUser.UserId && x.SeenByReceiver == false)
+                                {
+                                    <span style="font-size: 14px; color: black"><b>@y.FirstName @y.LastName: @x.LastMessage</b></span>
+                                    <span style="font-size: 14px; color: black">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
                                 }
                                 else
                                 {
-                                    <p>No user with name found</p>
+                                    <span style="font-size: 14px; color: grey">You: @x.LastMessage</span>
+                                    <span style="font-size: 14px; color: grey">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
                                 }
-                            }
-                        </div>
-                    }
-                </div>
-                
-                <div class="conversationsDiv">
-                    @if (hasPreviousConversations)
-                    {
-                        // Two List, one for conversations, other for user tied to the conversations.
-                        // Determines whether to show current users name, or other user
-                        @foreach(var (x, y) in _previousConversations.Zip(_usersForPreviousConversations))
-                        {
-                            <div class="convoCard" @onclick="() => OpenConvoCard(x.PersonAId, x.PersonBId)">
-                                <img alt="convo profile pic" src="@(y.ProfilePicture ?? "Pictures/noPic.png")"/>
-                                
-                                <div class="convoCardBuffer">
-                                    <span>@y.FirstName @y.LastName</span>
-                                    
-                                    @if (x.SenderId != _currentUser.UserId && x.SeenByReceiver)
-                                    {
-                                        <span style="font-size: 14px; color: grey">@y.FirstName @y.LastName: @x.LastMessage</span>
-                                        <span style="font-size: 14px; color: grey">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
-
-                                    } 
-                                    else if (x.SenderId != _currentUser.UserId && x.SeenByReceiver == false)
-                                    {
-                                        <span style="font-size: 14px; color: black"><b>@y.FirstName @y.LastName: @x.LastMessage</b></span>
-                                        <span style="font-size: 14px; color: black">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
-                                    }
-                                    else
-                                    {
-                                        <span style="font-size: 14px; color: grey">You: @x.LastMessage</span>
-                                        <span style="font-size: 14px; color: grey">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
-                                    }
-                                </div>
                             </div>
-                        }
-                    }
-                </div>
-                
-            </div>
-
-            <div class="messagesDiv">
-                <div class="convoBanner">
-                    <div>
-                        @if (userFound)
-                        {
-                            <img alt="profile pic" src="@(_otherPerson.ProfilePicture ?? "Pictures/noPic.png")"/>
-                            <span>@_otherPerson.FirstName @_otherPerson.LastName</span>
-                        }
-                    </div>
-                    
-                    <div style="display: flex">
-                        <div id="myProfileLink">
-                            <a href="/myprofile">My Profile</a>
                         </div>
-
-                        <div id="logoutLink">
-                            <a href="/logout">Logout</a>
-                        </div>
-                    </div>
-
-                </div>
-                <div class="messagesContainer">
-                    @if (userFound && hasMessages && clickedUser && _currentConvoMessages.Count > 0)
-                    {
-                        foreach (var message in _currentConvoMessages)
-                        {
-                            if (timeMap.Contains(message.MessageId))
-                            {
-                                <span class="messageTimestamp">@(message.Timestamp.Day == DateTime.Now.Day ? message.Timestamp.ToString("HH:mm") : message.Timestamp.ToString("dd-MMMM HH:mm"))</span>
-                            }
-                            
-                            if (message.Sender == _currentUser.UserId)
-                            {
-                                <div class="bufferDiv">
-                                    <div class="userMessage" @onclick="() => ShowTimestamp(message.MessageId)">
-                                        <span class="messageContent">@message.Content</span>
-                                    </div>
-                                    @if (message.MessageId == lastSeenMessageByReceiver)
-                                    {
-                                        <img id="seenPicture" alt="picture of other person" src=@(_otherPerson.ProfilePicture ?? "Pictures/noPic.png")/>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="receiverMessage" @onclick="() => ShowTimestamp(message.MessageId)">
-                                    <span class="messageContent">@message.Content</span>
-                                </div>
-                            }
-                        }
-                    }else if (!userFound && clickedUser)
-                    {
-                        <p>This user does not exist??</p>
-                    } else if (!hasMessages && clickedUser)
-                    {
-                        <p>Begin your conversation with @_otherPerson.FirstName @_otherPerson.LastName</p>
                     }
-                </div>
-                
-                <div class="inputDiv">
-                    <InputText @bind-Value="newText" @onkeyup="Enter" class="inputMessage" placeholder="Send message"></InputText>
-                    <svg @onclick="SendMessage" class="sendIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
-                    </svg>
-                    <InputFile OnChange="HandleFile"></InputFile>
-                </div>
+                }
             </div>
 
         </div>
+
+        <div class="messagesDiv">
+            <div class="convoBanner">
+                <div>
+                    @if (userFound)
+                    {
+                        <img alt="profile pic" src="@(_otherPerson.ProfilePicture ?? "Pictures/noPic.png")"/>
+                        <span>@_otherPerson.FirstName @_otherPerson.LastName</span>
+                    }
+                </div>
+
+                <div style="display: flex">
+                    <div id="myProfileLink">
+                        <a href="/myprofile">My Profile</a>
+                    </div>
+
+                    <div id="logoutLink">
+                        <a href="/logout">Logout</a>
+                    </div>
+                </div>
+
+            </div>
+            <div class="messagesContainer">
+                @if (userFound && hasMessages && clickedUser && _currentConvoMessages.Count > 0)
+                {
+                    foreach (var message in _currentConvoMessages)
+                    {
+                        if (timeMap.Contains(message.MessageId))
+                        {
+                            <span class="messageTimestamp">@(message.Timestamp.Day == DateTime.Now.Day ? message.Timestamp.ToString("HH:mm") : message.Timestamp.ToString("dd-MMMM HH:mm"))</span>
+                        }
+
+                        if (message.Sender == _currentUser.UserId)
+                        {
+                            <div class="bufferDiv">
+                                <div class="userMessage" @onclick="() => ShowTimestamp(message.MessageId)">
+                                    @if (message.IsFile)
+                                    {
+                                        <span @onclick="() => DownloadFile(message.MessageId)" style="color: blue; text-decoration: underline" class="messageContent">@message.Content</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="messageContent">@message.Content</span>
+                                    }
+                                    
+                                </div>
+                                @if (message.MessageId == lastSeenMessageByReceiver)
+                                {
+                                    <img id="seenPicture" alt="picture of other person" src=@(_otherPerson.ProfilePicture ?? "Pictures/noPic.png")/>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="receiverMessage" @onclick="() => ShowTimestamp(message.MessageId)">
+                                @if (message.IsFile)
+                                {
+                                    <span @onclick="() => DownloadFile(message.MessageId)" style="color: blue; text-decoration: underline" class="messageContent">@message.Content</span>
+                                }
+                                else
+                                {
+                                    <span class="messageContent">@message.Content</span>
+                                }
+                            </div>
+                        }
+                    }
+                }
+                else if (!userFound && clickedUser)
+                {
+                    <p>This user does not exist??</p>
+                }
+                else if (!hasMessages && clickedUser)
+                {
+                    <p>Begin your conversation with @_otherPerson.FirstName @_otherPerson.LastName</p>
+                }
+            </div>
+
+            <div class="inputDiv">
+                <InputText @bind-Value="newText" @onkeyup="Enter" class="inputMessage" placeholder="Send message"></InputText>
+                <svg @onclick="() => SendMessage(false)" class="sendIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
+                </svg>
+                <InputFile OnChange="HandleFile"></InputFile>
+            </div>
+        </div>
+
+    </div>
         
-    }
 }
+
 
 
 @code{
@@ -197,7 +228,11 @@ else
     string? newText;
 
     byte[]? fileBytes;
-    string? fileString;
+    int maxFileNameLength = 20;
+    bool fileCouldNotBeUploaded;
+    bool fileSizeTooLarge;
+    bool downloadFailed;
+    long maxFileSize = 50000000;
     
     string noPicString = "Pictures/noPic.png";
 
@@ -211,7 +246,7 @@ else
     bool clickedUser;
     bool messageNotSent;
     bool messageSentNotFound;
-    int lastSeenMessageByReceiver = 0;
+    int lastSeenMessageByReceiver;
 
     HashSet<int> timeMap = new HashSet<int>();
     
@@ -390,27 +425,69 @@ else
         var file = e.File;
         if (file != null)
         {
+            if (file.Size > maxFileSize)
+            {
+                fileSizeTooLarge = true;
+                return;
+            }
             using var memoryStream = new MemoryStream();
             await file.OpenReadStream().CopyToAsync(memoryStream);
             fileBytes = memoryStream.ToArray();
-            fileString = Convert.ToBase64String(fileBytes);
+
+            newText = file.Name.Length > maxFileNameLength ? file.Name.Substring(0, maxFileNameLength) : file.Name;
+           
+            MessageFileContainer container = new MessageFileContainer
+            {
+                FileName = file.Name,
+                SenderId = _currentUser.UserId,
+                File = fileBytes
+            };
+            var uploadResponse = await Client.PostAsJsonAsync("messages/sendFile", container);
+            
+            if (uploadResponse.StatusCode == HttpStatusCode.BadRequest)
+            {
+                fileCouldNotBeUploaded = true;
+                StateHasChanged();
+                return;
+            }
+            
+            var path = await uploadResponse.Content.ReadAsStringAsync();
+            
+            await SendMessage(true, path);
         }
         else
         {
             fileBytes = null;
-            fileString = null;
+            fileCouldNotBeUploaded = false;
+            fileSizeTooLarge = false;
         }
     }
     
-    public void Enter(KeyboardEventArgs e)
+    private async Task DownloadFile(int messageId)
+    {
+        var response = await Client.GetAsync($"messages/getFile{messageId}");
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            downloadFailed = true;
+            return;
+        }
+        var NameByteContainer = await response.Content.ReadFromJsonAsync<ByteNameContainer>();
+        var asMemStream = new MemoryStream(NameByteContainer.Bytes);
+
+        using var streamRef = new DotNetStreamReference(asMemStream);
+
+        await JS.InvokeVoidAsync("downloadFileFromStream", NameByteContainer.FileName, streamRef);
+    }
+    
+    private void Enter(KeyboardEventArgs e)
     {
         if (e.Code == "Enter" || e.Code == "NumpadEnter")
-        {
-            SendMessage();
+        { 
+            SendMessage(false);
         }
     }
 
-    private async Task SendMessage()
+    private async Task SendMessage(bool isFile, string path = "")
     {
         if (_otherPerson == null || _currentUser == null)
         {
@@ -421,14 +498,34 @@ else
         if(string.IsNullOrWhiteSpace(newText))
             return;
 
-        Message newMess = new Message()
+        Message newMess;
+        
+        if (isFile)
         {
-            Content = newText,
-            MessageId = 0,
-            Receiver = _otherPerson.UserId,
-            Sender = _currentUser.UserId,
-            Timestamp = DateTime.MinValue
-        };
+            newMess = new Message()
+            {
+                Content = newText,
+                MessageId = 0,
+                Receiver = _otherPerson.UserId,
+                Sender = _currentUser.UserId,
+                Timestamp = DateTime.MinValue,
+                IsFile = isFile,
+                FileURL = path
+            };
+        }
+        else
+        {
+            newMess = new Message()
+            {
+                Content = newText,
+                MessageId = 0,
+                Receiver = _otherPerson.UserId,
+                Sender = _currentUser.UserId,
+                Timestamp = DateTime.MinValue,
+                IsFile = isFile
+            };
+        }
+
         
         var response = await Client.PostAsJsonAsync("messages/createMessage", newMess);
         if (response.IsSuccessStatusCode)
@@ -616,5 +713,7 @@ else
         else
             await StartConvoWith(personA);
     }
+
+    
 
 }

@@ -10,7 +10,6 @@
 <PageTitle>Messages</PageTitle>
 
 <!-- Todo: 
-    1. Make file download work
     2. Error messages show up wrong (can be tested with fileSizeTooLarge)
     5. Reduce redundancy in code (make some code into functions)
     6. Make the app work with phone
@@ -19,7 +18,10 @@
 
 @if (_currentUser == null)
 {
-    <p>Authenticating...</p>
+    <div style="display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100vh;">
+        <div class="loader"></div>
+        <span>Authenticating...</span>
+    </div>
 }
 else
 {

@@ -211,7 +211,7 @@ else
                 <svg @onclick="() => SendMessage()" class="sendIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
                 </svg>
-                <InputFile OnChange="HandleFile"></InputFile>
+                <InputFile OnChange="HandleFile" size=""></InputFile>
             </div>
         </div>
 
@@ -437,7 +437,7 @@ else
                 return;
             }
             using var memoryStream = new MemoryStream();
-            await file.OpenReadStream().CopyToAsync(memoryStream);
+            await file.OpenReadStream(maxFileSize).CopyToAsync(memoryStream);
             fileBytes = memoryStream.ToArray();
 
             newText = file.Name.Length > maxFileNameLength ? file.Name.Substring(0, maxFileNameLength) : file.Name;
@@ -570,8 +570,10 @@ else
                     if (hubConnection is not null)
                         await hubConnection.InvokeAsync("UpdateReceiverMessages", _otherPerson.UserId, _currentUser.UserId);
                 }
-                
-                Console.WriteLine("Something went wrong updating conversations with new text");
+                else
+                {
+                    Console.WriteLine("Something went wrong updating conversations with new text");
+                }
                 
                 newText = "";
                 
@@ -610,7 +612,7 @@ else
     private async Task ConnectToWebSocketServer()
     {
         hubConnection = new HubConnectionBuilder()
-            .WithUrl($"{socketLocalHost}/chatMe?userid={_currentUser.UserId}")
+            .WithUrl($"{socketAzure}/chatMe?userid={_currentUser.UserId}")
             .Build();
 
         hubConnection.On<int>("UpdateMessages", UpdateMessages);

@@ -13,7 +13,6 @@
     2. Error messages show up wrong (can be tested with fileSizeTooLarge)
     5. Reduce redundancy in code (make some code into functions)
     6. Make the app work with phone
-    7. Screen resolution on create profile
     8. Make 'update Seen status' on messages better (not sending ALL messages)
 -->
 
@@ -612,7 +611,7 @@ else
     private async Task ConnectToWebSocketServer()
     {
         hubConnection = new HubConnectionBuilder()
-            .WithUrl($"{socketAzure}/chatMe?userid={_currentUser.UserId}")
+            .WithUrl($"{socketLocalHost}/chatMe?userid={_currentUser.UserId}")
             .Build();
 
         hubConnection.On<int>("UpdateMessages", UpdateMessages);

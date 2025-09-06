@@ -1,6 +1,7 @@
 ﻿.wholePage{
     width:100%;
     display:flex;
+    justify-content: center;
 }
 
 #image{
@@ -9,12 +10,8 @@
 }
 
 ::deep .editForm{
-    width:30%;
-    height: 97vh;
     display: flex;
     flex-direction: column;
-    flex-wrap: wrap;
-    align-content: center;
 }
 
 ::deep .inputStyle{

@@ -247,4 +247,12 @@
     0%,5%  {rotate:  0deg}
     95%,to {rotate:-60deg}
 }
-      
+
+.alerts{
+    position: absolute;
+    z-index: 99 !important;
+    width: 95vw;
+    display: flex;
+    justify-content: center;
+    justify-self: center;
+}

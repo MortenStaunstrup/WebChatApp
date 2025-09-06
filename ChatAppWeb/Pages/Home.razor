@@ -14,6 +14,7 @@
     5. Reduce redundancy in code (make some code into functions)
     6. Make the app work with phone
     8. Make 'update Seen status' on messages better (not sending ALL messages)
+    9. When retrieving messages, only retrieve the last 10-20, make a see more at the top to se more messages
 -->
 
 @if (_currentUser == null)
@@ -25,34 +26,34 @@
 }
 else
 {
+    @if (messageNotSent)
+    {
+        <div class="alerts alert alert-danger" role="alert">
+            Message could not be sent
+        </div>
+    } else if (messageSentNotFound)
+    {
+        <div class="alerts alert alert-danger" role="alert">
+            Message could not be found in the database
+        </div>
+    } else if (fileCouldNotBeUploaded)
+    {
+        <div class="alerts alert alert-danger" role="alert">
+            File could not be uploaded
+        </div>
+    } else if (fileSizeTooLarge)
+    {
+        <div class="alerts alert alert-danger" role="alert">
+            File size too large
+        </div>
+    } else if (downloadFailed)
+    {
+        <div class="alerts alert alert-danger" role="alert">
+            File could not be downloaded
+        </div>
+    }
     <div class="main">
         
-        @if (messageNotSent)
-        {
-            <div class="alert alert-danger" role="alert">
-                Message could not be sent
-            </div>
-        } else if (messageSentNotFound)
-        {
-            <div class="alert alert-danger" role="alert">
-                Message could not be found in the database
-            </div>
-        } else if (fileCouldNotBeUploaded)
-        {
-            <div class="alert alert-danger" role="alert">
-                File could not be uploaded
-            </div>
-        } else if (fileSizeTooLarge)
-        {
-            <div class="alert alert-danger" role="alert">
-                File size too large
-            </div>
-        } else if (downloadFailed)
-        {
-            <div class="alert alert-danger" role="alert">
-                File could not be downloaded
-            </div>
-        }
 
         <div class="usersDiv">
 
@@ -432,7 +433,7 @@ else
         {
             if (file.Size > maxFileSize)
             {
-                fileSizeTooLarge = true;
+                await FileSizeTooLargeError();
                 return;
             }
             using var memoryStream = new MemoryStream();
@@ -451,8 +452,7 @@ else
             
             if (uploadResponse.StatusCode == HttpStatusCode.BadRequest)
             {
-                fileCouldNotBeUploaded = true;
-                StateHasChanged();
+                await FileCouldNotBeUploadedError();
                 return;
             }
             
@@ -463,8 +463,6 @@ else
         else
         {
             fileBytes = null;
-            fileCouldNotBeUploaded = false;
-            fileSizeTooLarge = false;
         }
     }
     
@@ -473,7 +471,7 @@ else
         var response = await Client.GetAsync($"messages/getFile{messageId}");
         if (response.StatusCode == HttpStatusCode.Conflict)
         {
-            downloadFailed = true;
+            await FileCouldNotBeDownloadedError();
             return;
         }
         var NameByteContainer = await response.Content.ReadFromJsonAsync<ByteNameContainer>();
@@ -605,6 +603,33 @@ else
         StateHasChanged();
         await Task.Delay(3000);
         messageNotSent = false;
+        StateHasChanged();
+    }
+
+    private async Task FileCouldNotBeUploadedError()
+    {
+        fileCouldNotBeUploaded = true;
+        StateHasChanged();
+        await Task.Delay(3000);
+        fileCouldNotBeUploaded = false;
+        StateHasChanged();
+    }
+    
+    private async Task FileCouldNotBeDownloadedError()
+    {
+        downloadFailed = true;
+        StateHasChanged();
+        await Task.Delay(3000);
+        downloadFailed = false;
+        StateHasChanged();
+    }
+    
+    private async Task FileSizeTooLargeError()
+    {
+        fileSizeTooLarge = true;
+        StateHasChanged();
+        await Task.Delay(3000);
+        fileSizeTooLarge = false;
         StateHasChanged();
     }
 

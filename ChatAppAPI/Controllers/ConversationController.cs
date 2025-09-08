@@ -26,7 +26,8 @@ public class ConversationController : ControllerBase
         var conversations = await _conversationRepository.GetConversationsAsync(userId);
         if (conversations == null || conversations.Count == 0)
             return NotFound();
-        
+
+        conversations = conversations.Where(c => !string.IsNullOrWhiteSpace(c.LastMessage)).ToList();
         conversations = conversations.OrderByDescending(o => o.Timestamp).ToList();
 
         List<int> userIds = new List<int>();

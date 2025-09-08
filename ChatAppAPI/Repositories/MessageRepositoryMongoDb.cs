@@ -32,36 +32,21 @@ public class MessageRepositoryMongoDb : IMessagesRepository
     
     public async Task<List<Message>?> GetMessages(int currentUserId, int otherUserId)
     {
-        List<Message> messages = new List<Message>();
-        
         var currFirstFilter = Builders<Message>.Filter.Eq("Sender", currentUserId);
         var currSecondFilter = Builders<Message>.Filter.Eq("Receiver", otherUserId);
-        var firstCombinedFilter =  Builders<Message>.Filter.And(currFirstFilter, currSecondFilter);
         
-        var firstList = await _messagesCollection.Find(firstCombinedFilter).ToListAsync();
-        
-        if(firstList != null)
-            messages.AddRange(firstList);
-
-        // Check if the user is getting messages they have sent to themselves
-        if (currentUserId == otherUserId)
-            return messages;
+        var currAndFilter = Builders<Message>.Filter.And(currFirstFilter, currSecondFilter);
         
         var otherFirstFilter = Builders<Message>.Filter.Eq("Sender", otherUserId);
         var otherSecondFilter = Builders<Message>.Filter.Eq("Receiver", currentUserId);
-        var secondCombinedFilter = Builders<Message>.Filter.And(otherFirstFilter, otherSecondFilter);
         
-        var secondList = await _messagesCollection.Find(secondCombinedFilter).ToListAsync();
+        var otherAndFilter = Builders<Message>.Filter.And(otherFirstFilter, otherSecondFilter);
         
-        if(secondList != null)
-            messages.AddRange(secondList);
-
-        if (messages.Count > 0)
-        {
-            messages = messages.OrderBy(o => o.Timestamp).ToList();
-        }
+        var finalFilter = Builders<Message>.Filter.Or(currAndFilter, otherAndFilter);
         
-        return messages;
+        var list = await _messagesCollection.Find(finalFilter).SortBy(m => m.Timestamp).ToListAsync();
+        
+        return list;
         
     }
 

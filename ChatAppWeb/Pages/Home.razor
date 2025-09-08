@@ -338,19 +338,24 @@ else
             {
                 currentConvo = await newConvoResponse.Content.ReadFromJsonAsync<Conversation>();
                 currentConvo.Timestamp = currentConvo.Timestamp.ToLocalTime();
-                _previousConversations.Add(currentConvo);
-                _usersForPreviousConversations.Add(_otherPerson);
+                _previousConversations.Insert(0, currentConvo);
+                _usersForPreviousConversations.Insert(0, _otherPerson);
                 hasPreviousConversations = true;
             }
             else
             {
                 Console.WriteLine("An error occured trying to create a new conversation");
             }
-            StateHasChanged();
             
         } else if (convoResponse.IsSuccessStatusCode)
         {
             currentConvo = await convoResponse.Content.ReadFromJsonAsync<Conversation>();
+            if (string.IsNullOrWhiteSpace(currentConvo.LastMessage))
+            {
+                currentConvo.Timestamp = currentConvo.Timestamp.ToLocalTime();
+                _previousConversations.Insert(0, currentConvo);
+                _usersForPreviousConversations.Insert(0, _otherPerson);
+            }
             if (currentConvo.SenderId != _currentUser.UserId)
             {
                 currentConvo.SeenByReceiver = true;
@@ -363,6 +368,7 @@ else
                 }
             }
         }
+        StateHasChanged();
     }
 
     private async Task GetMessages(int userId)
@@ -383,17 +389,7 @@ else
                 }
             }
 
-            // Update seenByReceiver status for messages received by user
-            for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
-            {
-                if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == false)
-                {
-                    _currentConvoMessages[i].SeenByReceiver = true;
-                } else if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
-                {
-                    break;
-                }
-            }
+            await UpdateSeenMessages();
 
             foreach (var message in _currentConvoMessages)
             {
@@ -408,6 +404,26 @@ else
             hasMessages = false;
             StateHasChanged();
         }
+    }
+
+    private async Task UpdateSeenMessages()
+    {
+        var newMessages = new List<Message>();
+        
+        // Update seenByReceiver status for messages received by user
+        for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+        {
+            if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == false)
+            {
+                _currentConvoMessages[i].SeenByReceiver = true;
+                newMessages.Add(_currentConvoMessages[i]);
+            } else if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
+            {
+                break;
+            }
+        }
+
+        await Client.PostAsJsonAsync("messages/updateSeen", newMessages);
     }
     
     private async Task OnSearchChange(ChangeEventArgs e)
@@ -655,10 +671,6 @@ else
             await GetMessages(receiverId);
         
             clickedUser = true;
-
-            if (_currentConvoMessages.Count > 0)
-                await Client.PostAsJsonAsync("messages/updateSeen", _currentConvoMessages);
-            
         }
         StateHasChanged();
         Console.WriteLine("Messages Updated");
@@ -669,7 +681,8 @@ else
     {
         
         await GetConversations();
-
+        
+        //If the user sending a message is the user you are having a convo with, update specific convo
         if (senderId == _otherPerson.UserId)
         {
             await GetSpecificConversation(senderId);
@@ -677,9 +690,6 @@ else
             await GetMessages(senderId);
         
             clickedUser = true;
-
-            if (_currentConvoMessages.Count > 0)
-                await Client.PostAsJsonAsync("messages/updateSeen", _currentConvoMessages);
             
             await hubConnection.InvokeAsync("ShowSeen", _currentUser.UserId, _otherPerson.UserId);
 
@@ -715,9 +725,7 @@ else
 
         if (_currentConvoMessages.Count > 0)
         {
-            await Client.PostAsJsonAsync("messages/updateSeen", _currentConvoMessages);
             await hubConnection.InvokeAsync("UpdateReceiverMessages", userId, _currentUser.UserId);
-
         }
     }
 

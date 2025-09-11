@@ -11,8 +11,9 @@
 
 <!-- Todo: 
     5. Reduce redundancy in code (make some code into functions)
-    8. Make 'update Seen status' on messages better (not sending ALL messages)
     9. When retrieving messages, only retrieve the last 10-20, make a see more at the top to se more messages
+    10. Same as 9. but for conversations
+    11. Make it so messages start at the bottom of the screen (so the scrollbar is scrolled all the way down)
 -->
 
 @if (_currentUser == null)
@@ -149,7 +150,7 @@ else
                 </div>
 
             </div>
-            <div class="messagesContainer">
+            <div class="messagesContainer" id="scrollBottom">
                 @if (userFound && hasMessages && clickedUser && _currentConvoMessages.Count > 0)
                 {
                     foreach (var message in _currentConvoMessages)
@@ -261,12 +262,22 @@ else
     
     DotNetObjectReference<Home>? dotNetHelper;
     
+    bool shouldScrollToBottom = false;
+    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             dotNetHelper = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("registerOutsideClick", "userSearchInput", "userSearchDropdown", dotNetHelper);
+        }
+
+        if (shouldScrollToBottom)
+        {
+            shouldScrollToBottom = false;
+            // Hack to make scroll to bottom work. Otherwise the content might not be rendered and scrollToBottom wouldn't work
+            await Task.Delay(50);
+            await JS.InvokeVoidAsync("scrollToBottom");
         }
     }
     
@@ -369,6 +380,7 @@ else
             }
         }
         StateHasChanged();
+        shouldScrollToBottom = true;
     }
 
     private async Task GetMessages(int userId)
@@ -582,6 +594,7 @@ else
                     
                     if (hubConnection is not null)
                         await hubConnection.InvokeAsync("UpdateReceiverMessages", _otherPerson.UserId, _currentUser.UserId);
+                    shouldScrollToBottom = true;
                 }
                 else
                 {

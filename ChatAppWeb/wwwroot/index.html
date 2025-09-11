@@ -58,6 +58,12 @@
         anchorElement.remove();
         URL.revokeObjectURL(url);
     }
+    
+    window.scrollToBottom = function () {
+        let divElement = document.getElementById("scrollBottom")
+        divElement.scrollTop = divElement.scrollHeight;
+    }
+    
 </script>
 </body>
 

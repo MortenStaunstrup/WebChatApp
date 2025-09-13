@@ -13,6 +13,7 @@
     5. Reduce redundancy in code (make some code into functions)
     9. When retrieving messages, only retrieve the last 10-20, make a see more at the top to se more messages
     10. Same as 9. but for conversations
+    11. Scroll to bottom for messages logic is faulty, because it does it not when the messages are loaded, but at a time interval
 -->
 
 @if (_currentUser == null)
@@ -81,6 +82,7 @@ else
                                         </div>
                                     }
                                 }
+                                <span @onclick="ShowMoreUsers" style="color: blue; text-decoration: underline">See more...</span>
                             }
                             else
                             {
@@ -229,6 +231,8 @@ else
 
     List<User> _searchedUsers = new List<User>();
     string? _newUserSearch;
+    int _newUserPaging = 10;
+    int _newUserSearchPage = 0;
 
     string? newText;
 
@@ -439,8 +443,9 @@ else
     
     private async Task OnSearchChange(ChangeEventArgs e)
     {
+        _newUserSearchPage = 0;
         _newUserSearch = e.Value.ToString();
-        var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}");
+        var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}/0");
         if (response.IsSuccessStatusCode)
         {
             _searchedUsers = await response.Content.ReadFromJsonAsync<List<User>>();
@@ -449,6 +454,21 @@ else
         {
             _searchedUsers = new List<User>();
             StateHasChanged();
+        }
+    }
+
+    private async Task ShowMoreUsers()
+    {
+        _newUserSearchPage++;
+        var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}/{_newUserSearchPage * _newUserPaging}");
+        if (response.IsSuccessStatusCode)
+        {
+            List<User> moreUsers = await response.Content.ReadFromJsonAsync<List<User>>();
+            _searchedUsers.AddRange(moreUsers);
+            StateHasChanged();
+        } else if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            Console.WriteLine("No more users");
         }
     }
 

@@ -119,7 +119,7 @@ public class UserRepositoryMongoDb : IUserRepository
         
     }
 
-    public async Task<List<User>?> GetQueriedUsers(string query)
+    public async Task<List<User>?> GetQueriedUsers(string query, int page)
     {
         var handledString = query.Trim();
         
@@ -147,7 +147,9 @@ public class UserRepositoryMongoDb : IUserRepository
             new BsonDocument("$project", new BsonDocument {
                 { "FullName", 0 },
                 { "Password", 0 }
-            })
+            }),
+            new BsonDocument("$skip", page),
+            new BsonDocument("$limit", 10)
         };
 
         return await _userCollection.Aggregate<User>(pipeline).ToListAsync();

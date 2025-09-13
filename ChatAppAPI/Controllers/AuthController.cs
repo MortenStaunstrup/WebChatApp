@@ -14,7 +14,6 @@ public class AuthController : ControllerBase
     {
         this.userRepository = userRepository;
     }
-
     
     [HttpGet]
     [Route("login/{emailOrPhone}/{password}")]
@@ -44,14 +43,14 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet]
-    [Route("getquery/{query}")]
-    public async Task<IActionResult> GetQueriedUsers(string query)
+    [Route("getquery/{query}/{page:int}")]
+    public async Task<IActionResult> GetQueriedUsers(string query, int page)
     {
         //You maybe cannot send nothing/empty space over the endpoint, as that would be getquery/ which is not a valid endpoint
         if(string.IsNullOrWhiteSpace(query))
             return BadRequest();
         
-        var result = await userRepository.GetQueriedUsers(query);
+        var result = await userRepository.GetQueriedUsers(query, page);
         if (result == null || result.Count == 0)
             return NotFound();
         return Ok(result);

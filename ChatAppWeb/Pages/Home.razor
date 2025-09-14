@@ -82,7 +82,7 @@ else
                                         </div>
                                     }
                                 }
-                                <span @onclick="ShowMoreUsers" style="color: blue; text-decoration: underline">See more...</span>
+                                <span @onclick="ShowMoreUsers" style="color: blue; text-decoration: underline; display: flex; justify-content: center;" class="showMore">See more...</span>
                             }
                             else
                             {
@@ -154,8 +154,10 @@ else
             <div class="messagesContainer" id="scrollBottom">
                 @if (userFound && hasMessages && clickedUser && _currentConvoMessages.Count > 0)
                 {
-                    foreach (var message in _currentConvoMessages)
+                    <span style="color: blue; text-decoration: underline; display: @(noMoreMessages ? "none" : "flex"); justify-content: center;" class="showMore" @onclick="ShowMoreMessages">Show more...</span>
+                    for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
                     {
+                        var message = _currentConvoMessages[i];
                         if (timeMap.Contains(message.MessageId))
                         {
                             <span class="messageTimestamp">@(message.Timestamp.Day == DateTime.Now.Day ? message.Timestamp.ToString("HH:mm") : message.Timestamp.ToString("dd-MMMM HH:mm"))</span>
@@ -202,6 +204,7 @@ else
                 }
                 else if (!hasMessages && clickedUser)
                 {
+                    // TODO Needs amazing styling
                     <p>Begin your conversation with @_otherPerson.FirstName @_otherPerson.LastName</p>
                 }
             </div>
@@ -250,12 +253,17 @@ else
     List<Conversation> _previousConversations = new List<Conversation>();
     List<User> _usersForPreviousConversations = new List<User>();
     List<Message> _currentConvoMessages;
+    int _convoPaging = 15;
+    int _convoPage = 0;
     bool hasMessages;
     bool userFound;
     bool clickedUser;
     bool messageNotSent;
     bool messageSentNotFound;
     int lastSeenMessageByReceiver;
+    int _messagePaging = 15;
+    int _messagePage = 0;
+    bool noMoreMessages = false;
 
     HashSet<int> timeMap = new HashSet<int>();
     
@@ -388,14 +396,17 @@ else
 
     private async Task GetMessages(int userId)
     {
-        var response = await Client.GetAsync($"messages/getMessages/{_currentUser.UserId}/{userId}");
+        _messagePage = 0;
+        var response = await Client.GetAsync($"messages/getMessages/{_currentUser.UserId}/{userId}/{_messagePaging}/0");
 
         if (response.IsSuccessStatusCode)
         {
+            noMoreMessages = response.StatusCode == HttpStatusCode.Accepted;
+            
             _currentConvoMessages = await response.Content.ReadFromJsonAsync<List<Message>>();
             
             // Find the last seen message by other person
-            for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+            for (int i = 0; i < _currentConvoMessages.Count; i++)
             {
                 if (_currentConvoMessages[i].Sender == _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == true)
                 {
@@ -426,7 +437,7 @@ else
         var newMessages = new List<Message>();
         
         // Update seenByReceiver status for messages received by user
-        for (int i = _currentConvoMessages.Count - 1; i >= 0; i--)
+        for (int i = 0; i < _currentConvoMessages.Count; i++)
         {
             if (_currentConvoMessages[i].Sender != _currentUser.UserId && _currentConvoMessages[i].SeenByReceiver == false)
             {
@@ -470,6 +481,39 @@ else
         {
             Console.WriteLine("No more users");
         }
+    }
+    
+    private async Task ShowMoreMessages()
+    {
+        _messagePage++;
+        var response = await Client.GetAsync($"messages/getMessages/{_currentUser.UserId}/{_otherPerson.UserId}/{_messagePaging}/{_messagePage}");
+        
+        switch (response.StatusCode)
+        {
+            case HttpStatusCode.OK:
+                List<Message> moreMessages = await response.Content.ReadFromJsonAsync<List<Message>>();
+                _currentConvoMessages.AddRange(moreMessages);
+                noMoreMessages = false;
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.Accepted:
+                List<Message> lastMessages = await response.Content.ReadFromJsonAsync<List<Message>>();
+                _currentConvoMessages.AddRange(lastMessages);
+                noMoreMessages = true;
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.NoContent:
+                noMoreMessages = true;
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.Conflict:
+                Console.WriteLine("Oh no, something went wrong!!!");
+                break;
+        }
+        
     }
 
     private async Task HandleFile(InputFileChangeEventArgs e)

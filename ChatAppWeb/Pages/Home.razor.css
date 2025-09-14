@@ -136,6 +136,10 @@
     background-color: #d7d7d7;
 }
 
+.showMore:hover {
+    cursor: pointer;
+}
+
 .messagesContainer{
     height: 100%;
     padding: 10px;

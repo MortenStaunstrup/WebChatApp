@@ -16,13 +16,19 @@ public class MessagesController : ControllerBase
      }
 
      [HttpGet]
-     [Route("getMessages/{currentUserId:int}/{otherUserId:int}")]
-     public async Task<IActionResult> GetMessages(int currentUserId, int otherUserId)
+     [Route("getMessages/{currentUserId:int}/{otherUserId:int}/{limit:int}/{page:int}")]
+     public async Task<IActionResult> GetMessages(int currentUserId, int otherUserId, int limit, int page)
      {
-          var result = await _messagesRepository.GetMessages(currentUserId, otherUserId);
-          if (result != null && result.Count > 0)
-               return Ok(result);
-          return Conflict();
+          var result = await _messagesRepository.GetMessages(currentUserId, otherUserId, limit, page);
+          if (result == null)
+               return Conflict();
+          if (result.Count < limit)
+               return Accepted(result);
+          if (result.Count == 0)
+               return NoContent();
+          
+          return Ok(result);
+          
      }
 
      [HttpGet]

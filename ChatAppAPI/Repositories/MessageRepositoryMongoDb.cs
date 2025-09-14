@@ -30,7 +30,7 @@ public class MessageRepositoryMongoDb : IMessagesRepository
     
     
     
-    public async Task<List<Message>?> GetMessages(int currentUserId, int otherUserId)
+    public async Task<List<Message>?> GetMessages(int currentUserId, int otherUserId, int limit, int page)
     {
         var currFirstFilter = Builders<Message>.Filter.Eq("Sender", currentUserId);
         var currSecondFilter = Builders<Message>.Filter.Eq("Receiver", otherUserId);
@@ -44,7 +44,7 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         
         var finalFilter = Builders<Message>.Filter.Or(currAndFilter, otherAndFilter);
         
-        var list = await _messagesCollection.Find(finalFilter).SortBy(m => m.Timestamp).ToListAsync();
+        var list = await _messagesCollection.Find(finalFilter).SortByDescending(m => m.Timestamp).Skip(limit * page).Limit(limit).ToListAsync();
         
         return list;
         

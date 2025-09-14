@@ -11,7 +11,6 @@
 
 <!-- Todo: 
     5. Reduce redundancy in code (make some code into functions)
-    9. When retrieving messages, only retrieve the last 10-20, make a see more at the top to se more messages
     10. Same as 9. but for conversations
     11. Scroll to bottom for messages logic is faulty, because it does it not when the messages are loaded, but at a time interval
 -->
@@ -82,7 +81,7 @@ else
                                         </div>
                                     }
                                 }
-                                <span @onclick="ShowMoreUsers" style="color: blue; text-decoration: underline; display: flex; justify-content: center;" class="showMore">See more...</span>
+                                <span @onclick="ShowMoreUsers" style="color: blue; text-decoration: underline; display: @(moreUsers ? "flex" : "none"); justify-content: center;" class="showMore">See more...</span>
                             }
                             else
                             {
@@ -226,25 +225,26 @@ else
 
 
 @code{
-    string socketAzure = "https://chatappmesocket.azurewebsites.net";
-    string socketLocalHost = "http://localhost:5150";
+    const string socketAzure = "https://chatappmesocket.azurewebsites.net";
+    const string socketLocalHost = "http://localhost:5150";
     
     User? _currentUser;
     User? _otherPerson;
 
     List<User> _searchedUsers = new List<User>();
     string? _newUserSearch;
-    int _newUserPaging = 10;
+    const int _newUserPaging = 10;
     int _newUserSearchPage = 0;
+    bool moreUsers = true;
 
     string? newText;
 
     byte[]? fileBytes;
-    int maxFileNameLength = 20;
+    const int maxFileNameLength = 20;
     bool fileCouldNotBeUploaded;
     bool fileSizeTooLarge;
     bool downloadFailed;
-    long maxFileSize = 50000000;
+    const long maxFileSize = 50000000;
     
     string noPicString = "Pictures/noPic.png";
 
@@ -253,7 +253,7 @@ else
     List<Conversation> _previousConversations = new List<Conversation>();
     List<User> _usersForPreviousConversations = new List<User>();
     List<Message> _currentConvoMessages;
-    int _convoPaging = 15;
+    const int _convoPaging = 15;
     int _convoPage = 0;
     bool hasMessages;
     bool userFound;
@@ -261,7 +261,7 @@ else
     bool messageNotSent;
     bool messageSentNotFound;
     int lastSeenMessageByReceiver;
-    int _messagePaging = 15;
+    const int _messagePaging = 15;
     int _messagePage = 0;
     bool noMoreMessages = false;
 
@@ -456,30 +456,63 @@ else
     {
         _newUserSearchPage = 0;
         _newUserSearch = e.Value.ToString();
-        var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}/0");
-        if (response.IsSuccessStatusCode)
+        var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}/{_newUserPaging}/0");
+        
+        switch (response.StatusCode)
         {
-            _searchedUsers = await response.Content.ReadFromJsonAsync<List<User>>();
-            StateHasChanged();
-        } else if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            _searchedUsers = new List<User>();
-            StateHasChanged();
+            case HttpStatusCode.OK:
+                moreUsers = true;
+                _searchedUsers = await response.Content.ReadFromJsonAsync<List<User>>();
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.Accepted:
+                _searchedUsers = await response.Content.ReadFromJsonAsync<List<User>>();
+                moreUsers = false;
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.NoContent:
+                moreUsers = false;
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.Conflict:
+                Console.WriteLine("Oh no, something went wrong!!!");
+                break;
         }
     }
 
     private async Task ShowMoreUsers()
     {
         _newUserSearchPage++;
-        var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}/{_newUserSearchPage * _newUserPaging}");
-        if (response.IsSuccessStatusCode)
+        var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}/{_newUserPaging}/{_newUserSearchPage}");
+        
+        switch (response.StatusCode)
         {
-            List<User> moreUsers = await response.Content.ReadFromJsonAsync<List<User>>();
-            _searchedUsers.AddRange(moreUsers);
-            StateHasChanged();
-        } else if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            Console.WriteLine("No more users");
+            case HttpStatusCode.OK:
+                moreUsers = true;
+                List<User> newUsers = await response.Content.ReadFromJsonAsync<List<User>>();
+                _searchedUsers.AddRange(newUsers);
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.Accepted:
+                List<User> lastUsers = await response.Content.ReadFromJsonAsync<List<User>>();
+                _searchedUsers.AddRange(lastUsers);
+                moreUsers = false;
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.NoContent:
+                moreUsers = false;
+                StateHasChanged();
+                break;
+                
+            case HttpStatusCode.Conflict:
+                Console.WriteLine("Oh no, something went wrong!!!");
+                break;
+                
         }
     }
     

@@ -64,6 +64,31 @@
         divElement.scrollTop = divElement.scrollHeight;
     }
     
+    // Called when new user joins
+    window.TutorialClick = function (dotNetHelper) {
+        
+        window.tutorialHandler = function (event) {
+            var page = document.getElementById("app");
+            if(!page) {
+                console.error("No page found");
+                return;
+            }
+            if (page.contains(event.target)) {
+                dotNetHelper.invokeMethodAsync('ContinueTutorial');
+            }
+        }
+        
+        document.addEventListener('mousedown', tutorialHandler);
+    };
+    
+    window.RemoveTutorialClick = function () {
+        if(window.tutorialHandler) {
+            document.removeEventListener('mousedown', window.tutorialHandler);
+            window.tutorialHandler = null;
+            window.TutorialClick = null;
+        }
+    }
+    
 </script>
 </body>
 

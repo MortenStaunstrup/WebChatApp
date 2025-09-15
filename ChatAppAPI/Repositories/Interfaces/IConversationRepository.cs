@@ -4,7 +4,7 @@ namespace ChatAppAPI.Repositories.Interfaces;
 
 public interface IConversationRepository
 {
-    Task<List<Conversation>?> GetConversationsAsync(int userId);
+    Task<List<Conversation>?> GetConversationsAsync(int userId, int limit, int page);
     Task<Conversation> CreateConversation(Conversation conversation);
     Task<Conversation> UpdateConversation(Conversation conversation);
     Task<Conversation?> GetConversation(int userId, int otherPersonId);

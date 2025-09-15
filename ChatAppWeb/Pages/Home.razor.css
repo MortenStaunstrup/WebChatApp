@@ -131,6 +131,79 @@
         margin-right: 10px;
     }
 }
+
+#tutorialDiv1{
+    display: block;
+    position: absolute;
+    top: 116px;
+    overflow: auto;
+    width: 234px;
+    outline: black solid 1px;
+    background-color: white;
+    z-index: 1;
+    margin-left: 20px;
+}
+
+#tutorialDiv2{
+    display: block;
+    position: absolute;
+    top: 20vh;
+    left: 320px;
+    overflow: auto;
+    width: 229px;
+    outline: black solid 1px;
+    background-color: white;
+    z-index: 1;
+}
+
+#tutorialDiv3{
+    display: block;
+    position: absolute;
+    top: 469px;
+    left: 320px;
+    overflow: auto;
+    width: 229px;
+    outline: black solid 1px;
+    background-color: white;
+    z-index: 1;
+}
+
+#tutorialDiv4{
+    display: block;
+    position: absolute;
+    bottom: 12vh;
+    right: 7vw;
+    overflow: auto;
+    width: 229px;
+    outline: black solid 1px;
+    background-color: white;
+    z-index: 1;
+}
+
+#tutorialDiv5{
+    display: block;
+    position: absolute;
+    bottom: 13vh;
+    right: 2vw;
+    overflow: auto;
+    width: 229px;
+    outline: black solid 1px;
+    background-color: white;
+    z-index: 1;
+}
+
+#tutorialEnd{
+    display: block;
+    position: absolute;
+    top: 45vh;
+    left: 50vw;
+    overflow: auto;
+    width: 229px;
+    outline: black solid 1px;
+    background-color: white;
+    z-index: 1;
+}
+
 .userCard:hover{
     cursor: pointer;
     background-color: #d7d7d7;

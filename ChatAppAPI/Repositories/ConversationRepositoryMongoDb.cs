@@ -21,13 +21,13 @@ public class ConversationRepositoryMongoDb : IConversationRepository
     }
 
 
-    public async Task<List<Conversation>?> GetConversationsAsync(int userId)
+    public async Task<List<Conversation>?> GetConversationsAsync(int userId, int limit, int page)
     {
         var filter =  Builders<Conversation>.Filter.Eq("PersonAId", userId);
         var filter2 = Builders<Conversation>.Filter.Eq("PersonBId", userId);
         var orFilter = Builders<Conversation>.Filter.Or(filter, filter2);
         
-        var result =  await _conversations.Find(orFilter).ToListAsync();
+        var result =  await _conversations.Find(orFilter).Skip(limit * page).Limit(limit).ToListAsync();
         return result;
         
     }

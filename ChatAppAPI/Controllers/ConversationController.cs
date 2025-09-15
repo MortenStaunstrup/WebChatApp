@@ -20,12 +20,14 @@ public class ConversationController : ControllerBase
 
 
     [HttpGet]
-    [Route("getConversations/{userId:int}")]
-    public async Task<IActionResult> GetConversationsAsync(int userId)
+    [Route("getConversations/{userId:int}/{limit:int}/{page:int}")]
+    public async Task<IActionResult> GetConversationsAsync(int userId, int limit, int page)
     {
-        var conversations = await _conversationRepository.GetConversationsAsync(userId);
-        if (conversations == null || conversations.Count == 0)
-            return NotFound();
+        var conversations = await _conversationRepository.GetConversationsAsync(userId, limit, page);
+        if (conversations == null)
+            return Conflict();
+        if(conversations.Count == 0)
+            return NoContent();
 
         conversations = conversations.Where(c => !string.IsNullOrWhiteSpace(c.LastMessage)).ToList();
         conversations = conversations.OrderByDescending(o => o.Timestamp).ToList();
@@ -52,6 +54,8 @@ public class ConversationController : ControllerBase
             Conversations = conversations
         };
         
+        if (conversations.Count < limit)
+            return Accepted(container);
         return Ok(container);
 
     }

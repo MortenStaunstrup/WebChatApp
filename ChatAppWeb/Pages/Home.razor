@@ -853,7 +853,7 @@ else
             {
                 var message = await newResponse.Content.ReadFromJsonAsync<Message>();
                 message.Timestamp = message.Timestamp.ToLocalTime();
-                _currentConvoMessages.Add(message);
+                _currentConvoMessages.Insert(0, message);
                 currentConvo.LastMessage = newText;
                 currentConvo.SenderId = _currentUser.UserId;
                 currentConvo.SeenByReceiver = false;

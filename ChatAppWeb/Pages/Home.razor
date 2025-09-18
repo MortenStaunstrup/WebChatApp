@@ -18,6 +18,7 @@
     14. IMPORTANT!! Previous conversations get doubled when writing a new message
     15. Der er fejl ved nye brugere
     16. Profile picture bliver ikke updatet i update user (man ser det ikke når man reloader update profile page)
+    17. Front page has weird height of nothing above it self
 -->
 
 @if (_currentUser == null)
@@ -849,20 +850,9 @@ else
         {
             currentConvo.LastMessage = newText;
             var postConvoResponse = await Client.PostAsJsonAsync("conversations/create", currentConvo);
-            if (postConvoResponse.IsSuccessStatusCode)
-            {
-                var newConvoIndex = _previousConversations.FindIndex(c => c.ConversationId == currentConvo.ConversationId);
-                currentConvo = await postConvoResponse.Content.ReadFromJsonAsync<Conversation>();
-                _previousConversations.RemoveAt(newConvoIndex);
-                var user = _usersForPreviousConversations[newConvoIndex];
-                _previousConversations.Insert(0, currentConvo);
-                _usersForPreviousConversations.Insert(0, user);
-            }
-            else
-            {
-                Console.WriteLine("Something went wrong posting new conversation");
-                return;
-            }
+            _previousConversations = new List<Conversation>();
+            _usersForPreviousConversations = new List<User>();
+            await GetConversations();
         }
 
         

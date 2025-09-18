@@ -15,6 +15,9 @@
     11. Scroll to bottom for messages logic is faulty, because it does it not when the messages are loaded, but at a time interval
     12. Make UI prettier (probably never going to happen)
     13. Improve tutorial with sample data (use smartman@smartman.com, Smartman123) to test
+    14. IMPORTANT!! Previous conversations get doubled when writing a new message
+    15. Der er fejl ved nye brugere
+    16. Profile picture bliver ikke updatet i update user (man ser det ikke når man reloader update profile page)
 -->
 
 @if (_currentUser == null)
@@ -493,56 +496,54 @@ else
     private async Task GetSpecificConversation(int userId)
     {
         var convoResponse = await Client.GetAsync($"conversations/get/{_currentUser.UserId}/{userId}");
-        if (convoResponse.StatusCode == HttpStatusCode.NotFound)
-        {
-            var newConvo = new Conversation
-            {
-                ConversationId = 0,
-                LastMessage = "",
-                PersonAId = _currentUser.UserId,
-                PersonBId = userId,
-                SeenByReceiver = false,
-                Timestamp = DateTime.Now,
-                SenderId = _currentUser.UserId
-            };
-            var newConvoResponse = await Client.PostAsJsonAsync("conversations/create", newConvo);
 
-            if (newConvoResponse.IsSuccessStatusCode)
-            {
-                currentConvo = await newConvoResponse.Content.ReadFromJsonAsync<Conversation>();
-                currentConvo.Timestamp = currentConvo.Timestamp.ToLocalTime();
-                _previousConversations.Insert(0, currentConvo);
-                _usersForPreviousConversations.Insert(0, _otherPerson);
-                hasPreviousConversations = true;
-            }
-            else
-            {
-                Console.WriteLine("An error occured trying to create a new conversation");
-            }
-            
-        } else if (convoResponse.IsSuccessStatusCode)
+        switch (convoResponse.StatusCode)
         {
-            currentConvo = await convoResponse.Content.ReadFromJsonAsync<Conversation>();
-            if (string.IsNullOrWhiteSpace(currentConvo.LastMessage))
-            {
-                currentConvo.Timestamp = currentConvo.Timestamp.ToLocalTime();
-                _previousConversations.Insert(0, currentConvo);
-                _usersForPreviousConversations.Insert(0, _otherPerson);
-            }
-            if (currentConvo.SenderId != _currentUser.UserId)
-            {
-                currentConvo.SeenByReceiver = true;
-                _previousConversations.Find(x => x.ConversationId == currentConvo.ConversationId).SeenByReceiver = true;
-                
-                var update = await Client.PostAsJsonAsync($"conversations/updateSeenStatus", currentConvo);
-                if (!update.IsSuccessStatusCode)
+            case HttpStatusCode.OK:
+                currentConvo = await convoResponse.Content.ReadFromJsonAsync<Conversation>();
+                if (currentConvo.SenderId != _currentUser.UserId)
                 {
-                    Console.WriteLine("An error occured trying to update seen status");
+                    currentConvo.SeenByReceiver = true;
+                    _previousConversations.Find(x => x.ConversationId == currentConvo.ConversationId).SeenByReceiver = true;
+                
+                    var update = await Client.PostAsJsonAsync($"conversations/updateSeenStatus", currentConvo);
+                    if (!update.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine("An error occured trying to update seen status");
+                    }
                 }
-            }
+
+                hasPreviousConversations = true;
+                break;
+                
+            case HttpStatusCode.NotFound:
+                var newConvo = new Conversation
+                {
+                    ConversationId = 0,
+                    LastMessage = "",
+                    PersonAId = _currentUser.UserId,
+                    PersonBId = userId,
+                    SeenByReceiver = false,
+                    Timestamp = DateTime.Now,
+                    SenderId = _currentUser.UserId
+                };
+                var existingConvoIndex = _previousConversations.FindIndex(c => c.ConversationId == 0);
+                currentConvo = newConvo;
+
+                if (existingConvoIndex != -1)
+                {
+                    _previousConversations.RemoveAt(existingConvoIndex);
+                    _usersForPreviousConversations.RemoveAt(existingConvoIndex);
+                }
+                
+                _previousConversations.Insert(0, currentConvo);
+                _usersForPreviousConversations.Insert(0, _otherPerson);   
+                
+                hasPreviousConversations = true;
+                break;
         }
+        
         StateHasChanged();
-        shouldScrollToBottom = true;
     }
 
     private async Task GetMessages(int userId)
@@ -575,7 +576,7 @@ else
             
             hasMessages = true;
             StateHasChanged();
-        } else if (response.StatusCode == HttpStatusCode.Conflict)
+        } else if (response.StatusCode == HttpStatusCode.Conflict || response.StatusCode == HttpStatusCode.NotFound)
         {
             _currentConvoMessages = new List<Message>();
             hasMessages = false;
@@ -605,6 +606,7 @@ else
     
     private async Task OnSearchChange(ChangeEventArgs e)
     {
+        _searchedUsers = new List<User>();
         _newUserSearchPage = 0;
         _newUserSearch = e.Value.ToString();
         var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}/{_newUserPaging}/0");
@@ -843,6 +845,26 @@ else
             };
         }
 
+        if (currentConvo.LastMessage == "")
+        {
+            currentConvo.LastMessage = newText;
+            var postConvoResponse = await Client.PostAsJsonAsync("conversations/create", currentConvo);
+            if (postConvoResponse.IsSuccessStatusCode)
+            {
+                var newConvoIndex = _previousConversations.FindIndex(c => c.ConversationId == currentConvo.ConversationId);
+                currentConvo = await postConvoResponse.Content.ReadFromJsonAsync<Conversation>();
+                _previousConversations.RemoveAt(newConvoIndex);
+                var user = _usersForPreviousConversations[newConvoIndex];
+                _previousConversations.Insert(0, currentConvo);
+                _usersForPreviousConversations.Insert(0, user);
+            }
+            else
+            {
+                Console.WriteLine("Something went wrong posting new conversation");
+                return;
+            }
+        }
+
         
         var response = await Client.PostAsJsonAsync("messages/createMessage", newMess);
         if (response.IsSuccessStatusCode)
@@ -858,8 +880,7 @@ else
                 currentConvo.SenderId = _currentUser.UserId;
                 currentConvo.SeenByReceiver = false;
                 
-                if (!hasMessages)
-                    hasMessages = true;
+                hasMessages = true;
                 
                 var update = await Client.PostAsJsonAsync("conversations/update", currentConvo);
                 if (update.IsSuccessStatusCode)
@@ -1001,6 +1022,7 @@ else
     {
         showDropdown = false;
         _newUserSearch = "";
+        _searchedUsers = new List<User>();
         var userResponse = await Client.GetAsync($"auth/getUser/{userId}");
 
         if (userResponse.IsSuccessStatusCode)

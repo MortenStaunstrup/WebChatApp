@@ -22,6 +22,8 @@ public class MessagesController : ControllerBase
           var result = await _messagesRepository.GetMessages(currentUserId, otherUserId, limit, page);
           if (result == null)
                return Conflict();
+          if (result.Count == 0 && page == 0)
+               return NotFound();
           if (result.Count == 0)
                return NoContent();
           if (result.Count < limit)

@@ -27,7 +27,7 @@ public class ConversationRepositoryMongoDb : IConversationRepository
         var filter2 = Builders<Conversation>.Filter.Eq("PersonBId", userId);
         var orFilter = Builders<Conversation>.Filter.Or(filter, filter2);
         
-        var result =  await _conversations.Find(orFilter).Skip(limit * page).Limit(limit).ToListAsync();
+        var result =  await _conversations.Find(orFilter).SortByDescending(c => c.Timestamp).Skip(limit * page).Limit(limit).ToListAsync();
         return result;
         
     }

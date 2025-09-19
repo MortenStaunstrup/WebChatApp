@@ -11,12 +11,8 @@
 
 <!-- Todo: 
     5. Reduce redundancy in code (make some code into functions)
-    10. Make pagination and limit for previousConversations
     11. Scroll to bottom for messages logic is faulty, because it does it not when the messages are loaded, but at a time interval
     12. Make UI prettier (probably never going to happen)
-    13. Improve tutorial with sample data (use smartman@smartman.com, Smartman123) to test
-    14. IMPORTANT!! Previous conversations get doubled when writing a new message
-    15. Der er fejl ved nye brugere
     16. Profile picture bliver ikke updatet i update user (man ser det ikke når man reloader update profile page)
     17. Front page has weird height of nothing above it self
 -->
@@ -55,16 +51,6 @@ else
         <div class="alerts alert alert-danger" role="alert">
             File could not be downloaded
         </div>
-    }
-
-    if (tutorial)
-    {
-        <div id="tutorialDiv1" style="display: @(tutStage == 1 ? "block" : "none")">Here you can search for users to talk to, by clicking the searchbar at the top and searching for an existing user</div>
-        <div id="tutorialDiv2" style="display: @(tutStage == 2 ? "block" : "none")">Users will appear here, and you can start a conversation with them</div>
-        <div id="tutorialDiv3" style="display: @(tutStage == 3 ? "block" : "none")">Previous conversations will be displayed over here, sorted by newest</div>
-        <div id="tutorialDiv4" style="display: @(tutStage == 4 ? "block" : "none")">You can send messages by pressing the "Enter" key on pc, or pressing the send button in the send message box</div>
-        <div id="tutorialDiv5" style="display: @(tutStage == 5 ? "block" : "none")">The image button allows you to send files to somebody</div>
-        <div id="tutorialEnd" style="display: @(tutStage == 6 ? "block" : "none")">That is all, have fun and remember, never write to somebody what you wouldn't say to them in person</div>
     }
     
     <div class="main">
@@ -135,7 +121,9 @@ else
                                 }
                                 else
                                 {
-                                    <span style="font-size: 14px; color: grey">You: @x.LastMessage</span>
+                                    <div class="userSeenBufferDiv">
+                                        <span style="font-size: 14px; color: grey">You: @x.LastMessage</span> <img src="@(y.ProfilePicture ?? "Pictures/noPic.png")" style="display: @(x.SeenByReceiver ? "block" : "none"); width: 12px; height: 12px; margin-right: 0; margin-left: 5px;" alt="User seen your message"/>
+                                    </div>
                                     <span style="font-size: 14px; color: grey">@(x.Timestamp.Day == DateTime.Now.Day ? x.Timestamp.ToString("HH:mm") : x.Timestamp.Year == DateTime.Now.Year ? x.Timestamp.ToString("dd-MMMM") : x.Timestamp.ToString("dd-MMMM-yyy"))</span>
                                 }
                             </div>
@@ -293,9 +281,6 @@ else
     DotNetObjectReference<Home>? dotNetHelper;
     
     bool shouldScrollToBottom = false;
-
-    bool tutorial = false;
-    int tutStage = 0;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -338,159 +323,51 @@ else
         {
             NavMan.NavigateTo("/login");
         }
-
-        if (_previousConversations.Count == 0)
-        {
-            StartTutorial();
-            StateHasChanged();
-        }
-    }
-
-    private void StartTutorial()
-    {
-        tutorial = true;
-        _searchedUsers = new List<User>()
-        {
-            new User()
-            {
-                FirstName = "Michelle",
-                LastName = "Arlington",
-                Email = "saf",
-                Password = "adf",
-                PhoneNumber = "35235",
-                UserId = 0,
-                ProfilePicture = "Pictures/Michelle.jpg"
-            },
-            new User()
-            {
-                FirstName = "Mikael",
-                LastName = "Bourne",
-                Email = "saf",
-                Password = "adf",
-                PhoneNumber = "35235",
-                UserId = 0,
-                ProfilePicture = "Pictures/Mikael.jpg"
-            }
-        };
-        _previousConversations = new List<Conversation>()
-        {
-            new Conversation()
-            {
-                ConversationId = 0,
-                LastMessage = "Are you joining the meetup later today?",
-                PersonAId = _currentUser.UserId,
-                PersonBId = 0,
-                SeenByReceiver = false,
-                SenderId = 0,
-                Timestamp = DateTime.Now.ToLocalTime()
-            },
-            new Conversation()
-            {
-                ConversationId = 0,
-                LastMessage = "John you absolute legend haha",
-                PersonAId = _currentUser.UserId,
-                PersonBId = 0,
-                SeenByReceiver = true,
-                SenderId = _currentUser.UserId,
-                Timestamp = DateTime.Now.Subtract(new TimeSpan(2, 4, 2)).ToLocalTime()
-            }
-        };
-        _usersForPreviousConversations = new List<User>()
-        {
-            new User()
-            {
-                FirstName = "Camilla",
-                LastName = "Neville",
-                Email = "saf",
-                Password = "adf",
-                PhoneNumber = "35235",
-                UserId = 0,
-                ProfilePicture = "Pictures/Camilla.jpg"
-            },
-            new User()
-            {
-                FirstName = "John",
-                LastName = "Doe",
-                Email = "saf",
-                Password = "adf",
-                PhoneNumber = "35235",
-                UserId = 0,
-                ProfilePicture = "Pictures/john.jpg"
-            }
-        };
-        tutStage = 1;
-        JS.InvokeVoidAsync("TutorialClick", dotNetHelper);
-        StateHasChanged();
-    }
-
-    [JSInvokable]
-    public async void ContinueTutorial()
-    {
-        _newUserSearch = "";
-        CloseDropdown();
-        tutStage++;
-        if (tutStage == 2)
-        {
-            _newUserSearch = "Mi";
-            ShowDropdown();
-        }
-        if (tutStage == 3)
-        {
-            hasPreviousConversations = true;
-        }
-        if (tutStage > 6)
-        {
-            _searchedUsers = new List<User>();
-            _previousConversations = new List<Conversation>();
-            _usersForPreviousConversations = new List<User>();
-            hasPreviousConversations = false;
-            tutorial = false;
-            await JS.InvokeVoidAsync("RemoveTutorialClick");
-        }
-        StateHasChanged();
+        
     }
 
     private async Task GetConversations()
     {
-        _convoPage = 0;
-        var response = await Client.GetAsync($"conversations/getConversations/{_currentUser.UserId}/{_convoPaging}/{_convoPage}");
+            _convoPage = 0;
+            var response = await Client.GetAsync($"conversations/getConversations/{_currentUser.UserId}/{_convoPaging}/{_convoPage}");
 
-        switch (response.StatusCode)
-        {
-            case HttpStatusCode.OK:
-                noMoreConversations = false;
-                var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
-                _previousConversations.AddRange(conversationsContainer.Conversations);
+            switch (response.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    noMoreConversations = false;
+                    var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
+                    _previousConversations.AddRange(conversationsContainer.Conversations);
 
-                foreach (var conversation in _previousConversations)
-                {
-                    conversation.Timestamp = conversation.Timestamp.ToLocalTime();
-                }
-                _usersForPreviousConversations.AddRange(conversationsContainer.Users);
-                hasPreviousConversations = true;
-                break;
+                    foreach (var conversation in _previousConversations)
+                    {
+                        conversation.Timestamp = conversation.Timestamp.ToLocalTime();
+                    }
+                    _usersForPreviousConversations.AddRange(conversationsContainer.Users);
+                    hasPreviousConversations = true;
+                    break;
                 
-            case HttpStatusCode.Accepted:
-                noMoreConversations = true;
-                var lastConversationContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
-                _previousConversations.AddRange(lastConversationContainer.Conversations);
+                case HttpStatusCode.Accepted:
+                    noMoreConversations = true;
+                    var lastConversationContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
+                    _previousConversations.AddRange(lastConversationContainer.Conversations);
 
-                foreach (var conversation in _previousConversations)
-                {
-                    conversation.Timestamp = conversation.Timestamp.ToLocalTime();
-                }
-                _usersForPreviousConversations.AddRange(lastConversationContainer.Users);
-                hasPreviousConversations = true;
-                break;
+                    foreach (var conversation in _previousConversations)
+                    {
+                        conversation.Timestamp = conversation.Timestamp.ToLocalTime();
+                    }
+                    _usersForPreviousConversations.AddRange(lastConversationContainer.Users);
+                    hasPreviousConversations = true;
+                    break;
                 
-            case HttpStatusCode.NoContent:
-                noMoreConversations = true;
-                break;
+                case HttpStatusCode.NoContent:
+                    noMoreConversations = true;
+                    break;
                 
-            case HttpStatusCode.Conflict:
-                Console.WriteLine("Oops... Something went wrong");
-                break;
-        }
+                case HttpStatusCode.Conflict:
+                    Console.WriteLine("Oops... Something went wrong");
+                    break;
+            }
+        
         StateHasChanged();
     }
 
@@ -501,7 +378,8 @@ else
         switch (convoResponse.StatusCode)
         {
             case HttpStatusCode.OK:
-                currentConvo = await convoResponse.Content.ReadFromJsonAsync<Conversation>();
+                var container = await convoResponse.Content.ReadFromJsonAsync<ConversationUserContainer>();
+                currentConvo = container.Conversation;
                 if (currentConvo.SenderId != _currentUser.UserId)
                 {
                     currentConvo.SeenByReceiver = true;
@@ -850,9 +728,19 @@ else
         {
             currentConvo.LastMessage = newText;
             var postConvoResponse = await Client.PostAsJsonAsync("conversations/create", currentConvo);
-            _previousConversations = new List<Conversation>();
-            _usersForPreviousConversations = new List<User>();
-            await GetConversations();
+            if (postConvoResponse.IsSuccessStatusCode)
+            {
+                var convo = await postConvoResponse.Content.ReadFromJsonAsync<Conversation>();
+                _previousConversations = new List<Conversation>();
+                _usersForPreviousConversations = new List<User>();
+                await GetConversations();
+                currentConvo = convo;
+            }
+            else
+            {
+                Console.WriteLine("Something went wrong starting a new conversation");
+            }
+            
         }
 
         
@@ -989,8 +877,8 @@ else
     // Called from WebSocket
     private async Task UpdateMessages(int senderId)
     {
-        
-        await GetConversations();
+
+        await FindAndUpdateConversation(senderId);
         
         //If the user sending a message is the user you are having a convo with, update specific convo
         if (senderId == _otherPerson.UserId)
@@ -1005,7 +893,40 @@ else
 
         }
         StateHasChanged();
-        Console.WriteLine("Messages Updated");
+        Console.WriteLine("Conversations Updated");
+    }
+
+    private async Task FindAndUpdateConversation(int senderId)
+    {
+        var response = await Client.GetAsync($"conversations/get/{_currentUser.UserId}/{senderId}");
+        if (response.IsSuccessStatusCode)
+        {
+            var container = await response.Content.ReadFromJsonAsync<ConversationUserContainer>();
+            container.Conversation.Timestamp = container.Conversation.Timestamp.ToLocalTime();
+            var index = _previousConversations.FindIndex(c => c.ConversationId == container.Conversation.ConversationId);
+            if (index != -1)
+            {
+                _previousConversations[index] = container.Conversation;
+                _usersForPreviousConversations[index] = container.User;
+            }
+            else
+            {
+                if (_previousConversations.Count == _convoPaging * (_convoPage + 1))
+                {
+                    _previousConversations.RemoveAt(_previousConversations.Count-1);
+                    _usersForPreviousConversations.RemoveAt(_usersForPreviousConversations.Count-1);
+                }
+                _previousConversations.Insert(0, container.Conversation);
+                _usersForPreviousConversations.Insert(0, container.User);
+            }
+
+            var zipped = _previousConversations.Zip(_usersForPreviousConversations, (convo, user) => new { convo, user })
+                .OrderByDescending(tuple => tuple.convo.Timestamp)
+                .ToList();
+            _previousConversations = zipped.Select(t => t.convo).ToList();
+            _usersForPreviousConversations = zipped.Select(t => t.user).ToList();
+            StateHasChanged();
+        }
     }
     
     private async Task StartConvoWith(int userId)

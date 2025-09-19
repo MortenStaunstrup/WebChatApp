@@ -29,9 +29,6 @@ public class ConversationController : ControllerBase
         if(conversations.Count == 0)
             return NoContent();
 
-        conversations = conversations.Where(c => !string.IsNullOrWhiteSpace(c.LastMessage)).ToList();
-        conversations = conversations.OrderByDescending(o => o.Timestamp).ToList();
-
         List<int> userIds = new List<int>();
 
         foreach (var conversation in conversations)
@@ -89,7 +86,18 @@ public class ConversationController : ControllerBase
         var result = await _conversationRepository.GetConversation(userId, otherPersonId);
         if (result == null)
             return NotFound();
-        return Ok(result);
+        
+        var user = await _userRepository.GetUserByUserIdAsync(otherPersonId);
+        if (user == null)
+            return NotFound();
+
+        var container = new ConversationUserContainer()
+        {
+            User = user,
+            Conversation = result
+        };
+        
+        return Ok(container);
     }
 
 

@@ -294,7 +294,7 @@ else
         {
             shouldScrollToBottom = false;
             // Hack to make scroll to bottom work. Otherwise the content might not be rendered and scrollToBottom wouldn't work
-            await Task.Delay(50);
+            await Task.Delay(250);
             await JS.InvokeVoidAsync("scrollToBottom");
         }
     }
@@ -940,6 +940,7 @@ else
         {
             _otherPerson = await userResponse.Content.ReadFromJsonAsync<User>();
             userFound = true;
+            shouldScrollToBottom = true;
         }
         else
         {

@@ -10,11 +10,10 @@
 <PageTitle>Messages</PageTitle>
 
 <!-- Todo: 
-    5. Reduce redundancy in code (make some code into functions)
-    11. Scroll to bottom for messages logic is faulty, because it does it not when the messages are loaded, but at a time interval
-    12. Make UI prettier (probably never going to happen)
-    16. Profile picture bliver ikke updatet i update user (man ser det ikke når man reloader update profile page)
-    17. Front page has weird height of nothing above it self
+    1. When getting messages, if getting 15 messages and there are no more, the option to 'show more messages' is still there 
+    3. Make UI prettier (probably never going to happen)
+    4. Profile picture bliver ikke updatet i update user (man ser det ikke når man reloader update profile page)
+    5. Front page has weird height of nothing above it self
 -->
 
 @if (_currentUser == null)
@@ -258,7 +257,7 @@ else
     Conversation currentConvo;
     List<Conversation> _previousConversations = new List<Conversation>();
     List<User> _usersForPreviousConversations = new List<User>();
-    List<Message> _currentConvoMessages;
+    List<Message> _currentConvoMessages = new List<Message>();
     const int _convoPaging = 15;
     int _convoPage = 0;
     bool noMoreConversations = false;
@@ -281,6 +280,7 @@ else
     DotNetObjectReference<Home>? dotNetHelper;
     
     bool shouldScrollToBottom = false;
+    bool isFirstConversationClicked = true;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -292,9 +292,13 @@ else
 
         if (shouldScrollToBottom)
         {
+            // When first conversation clicked, delay needs to happen to scroll to bottom
+            if (isFirstConversationClicked)
+            {
+                await Task.Delay(250);
+                isFirstConversationClicked = false;
+            }
             shouldScrollToBottom = false;
-            // Hack to make scroll to bottom work. Otherwise the content might not be rendered and scrollToBottom wouldn't work
-            await Task.Delay(250);
             await JS.InvokeVoidAsync("scrollToBottom");
         }
     }
@@ -454,6 +458,7 @@ else
             }
             
             hasMessages = true;
+            shouldScrollToBottom = true;
             StateHasChanged();
         } else if (response.StatusCode == HttpStatusCode.Conflict || response.StatusCode == HttpStatusCode.NotFound)
         {
@@ -940,7 +945,6 @@ else
         {
             _otherPerson = await userResponse.Content.ReadFromJsonAsync<User>();
             userFound = true;
-            shouldScrollToBottom = true;
         }
         else
         {

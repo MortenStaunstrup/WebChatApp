@@ -44,7 +44,8 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         
         var finalFilter = Builders<Message>.Filter.Or(currAndFilter, otherAndFilter);
         
-        var list = await _messagesCollection.Find(finalFilter).SortByDescending(m => m.Timestamp).Skip(limit * page).Limit(limit).ToListAsync();
+        // Extract 1 more to see if there are more messages after
+        var list = await _messagesCollection.Find(finalFilter).SortByDescending(m => m.Timestamp).Skip(limit * page).Limit(limit + 1).ToListAsync();
         
         return list;
         

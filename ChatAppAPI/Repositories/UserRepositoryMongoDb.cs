@@ -149,7 +149,7 @@ public class UserRepositoryMongoDb : IUserRepository
                 { "Password", 0 }
             }),
             new BsonDocument("$skip", page * limit),
-            new BsonDocument("$limit", limit)
+            new BsonDocument("$limit", limit + 1)
         };
 
         return await _userCollection.Aggregate<User>(pipeline).ToListAsync();

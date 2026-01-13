@@ -26,10 +26,10 @@ public class MessagesController : ControllerBase
                return NotFound();
           if (result.Count == 0)
                return NoContent();
-          if (result.Count < limit)
+          if (result.Count < limit || result.Count == limit)
                return Accepted(result);
           
-          return Ok(result);
+          return Ok(result.GetRange(0, limit));
           
      }
 

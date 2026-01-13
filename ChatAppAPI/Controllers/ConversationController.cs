@@ -51,8 +51,11 @@ public class ConversationController : ControllerBase
             Conversations = conversations
         };
         
-        if (conversations.Count < limit)
+        if (conversations.Count < limit || conversations.Count == limit)
             return Accepted(container);
+
+        container.Conversations = container.Conversations.GetRange(0, limit);
+        container.Users = container.Users.GetRange(0, limit);
         return Ok(container);
 
     }

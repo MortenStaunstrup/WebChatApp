@@ -46,11 +46,6 @@ public class AuthController : ControllerBase
     [Route("getquery/{query}/{limit:int}/{page:int}")]
     public async Task<IActionResult> GetQueriedUsers(string query, int limit, int page)
     {
-        //You maybe cannot send nothing/empty space over the endpoint, as that would be getquery/ which is not a valid endpoint
-        // You can't, maybe delte this bit of code??
-        if(string.IsNullOrWhiteSpace(query))
-            return BadRequest();
-        
         var result = await userRepository.GetQueriedUsers(query, limit, page);
         if (result == null)
             return Conflict();

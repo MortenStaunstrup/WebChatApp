@@ -10,7 +10,8 @@
 <PageTitle>Messages</PageTitle>
 
 <!-- Todo: 
-    1. When getting messages, if getting 15 messages and there are no more, the option to 'show more messages' is still there 
+    1. When getting messages, if getting 15 messages and there are no more, the option to 'show more messages' is still there
+    (Fetch 1 more message or user to check if more exist)
     3. Make UI prettier (probably never going to happen)
     4. Profile picture bliver ikke updatet i update user (man ser det ikke når man reloader update profile page)
     5. Front page has weird height of nothing above it self
@@ -493,6 +494,13 @@ else
         _searchedUsers = new List<User>();
         _newUserSearchPage = 0;
         _newUserSearch = e.Value.ToString();
+        if (string.IsNullOrEmpty(_newUserSearch))
+        {
+            moreUsers = false;
+            _searchedUsers = new List<User>();
+            StateHasChanged();
+            return;
+        }
         var response = await Client.GetAsync($"auth/getquery/{_newUserSearch}/{_newUserPaging}/0");
         
         switch (response.StatusCode)

@@ -71,7 +71,7 @@
 }
 
 @code {
-    ProfileUser user;
+    ProfileUser? user;
     EditContext EditContext;
     
     bool loaded;
@@ -101,7 +101,35 @@
     protected override async Task OnInitializedAsync()
     {
         user = await LocalStorage.GetItemAsync<ProfileUser>("user");
-        EditContext = new EditContext(user);
+        if (user == null)
+        {
+            NavMan.NavigateTo("/register");
+        }
+        else
+        {
+            var result = await Client.GetAsync($"auth/getuser/{user.UserId}");
+            switch (result.StatusCode)
+            {
+                case HttpStatusCode.NotFound:
+                    NavMan.NavigateTo("/register");
+                    break;
+                    
+                case HttpStatusCode.OK:
+                    var userResult = await result.Content.ReadFromJsonAsync<User>();
+                    user = new ProfileUser()
+                    {
+                        FirstName = userResult.FirstName,
+                        LastName = userResult.LastName,
+                        Email = userResult.Email,
+                        PhoneNumber = userResult.PhoneNumber,
+                        UserId = userResult.UserId,
+                        ProfilePicture = userResult.ProfilePicture
+                    };
+                    profilePic = userResult.ProfilePicture ?? "Pictures/noPic.png";
+                    break;
+            }
+        }
+        EditContext = new EditContext(user!);
         loaded = true;
     }
 

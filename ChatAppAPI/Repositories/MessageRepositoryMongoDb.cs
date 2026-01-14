@@ -4,6 +4,11 @@ using Core;
 using Microsoft.AspNetCore.Connections;
 using MongoDB.Driver;
 using Azure.Storage.Files.Shares;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using System;
+using System.IO;
+using Azure.Identity;
 
 namespace ChatAppAPI.Repositories;
 
@@ -13,7 +18,7 @@ public class MessageRepositoryMongoDb : IMessagesRepository
     private readonly IMongoClient  _mongoClient;
     private readonly IMongoDatabase _mongoDatabase;
     private readonly IMongoCollection<Message> _messagesCollection;
-    private readonly ShareClient _shareClient;
+    private readonly BlobServiceClient _blobStorageClient;
 
     public MessageRepositoryMongoDb()
     {
@@ -25,7 +30,10 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         _mongoClient = new MongoClient(_connectionString);
         _mongoDatabase = _mongoClient.GetDatabase("ChatApp");
         _messagesCollection = _mongoDatabase.GetCollection<Message>("Messages");
-        _shareClient = new ShareClient(Environment.GetEnvironmentVariable("AZURE_FILE_STORAGE_CONNECTION_STRING"), "userfiles");
+        _blobStorageClient = new BlobServiceClient(
+            new Uri(Environment.GetEnvironmentVariable("AZURE_BLOBS_STORAGE_CONNECTION_STRING")),
+            new DefaultAzureCredential()
+            );
     }
     
     
@@ -51,6 +59,55 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         
     }
 
+    public async Task<string> UploadFile(string fileName, int senderId, byte[] file)
+    {
+        try
+        {
+            BlobContainerClient containerClient = _blobStorageClient.GetBlobContainerClient("chatapp");
+            string blobName = fileName + Guid.NewGuid();
+            BlobClient blobClient = containerClient.GetBlobClient(blobName);
+
+            var binData = BinaryData.FromBytes(file);
+
+            await blobClient.UploadAsync(binData, true);
+            return blobName;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return "";
+        }
+       
+    }
+
+    public async Task<ByteNameContainer?> DownloadFile(int messageId)
+    {
+        var message = await GetSentMessage(messageId);
+        if (message == null)
+            return null;
+        
+        BlobContainerClient containerClient = _blobStorageClient.GetBlobContainerClient("chatapp");
+        BlobClient blobClient = containerClient.GetBlobClient(message.FileURL);
+
+        var download = await blobClient.DownloadAsync();
+        if (download.HasValue)
+        {
+            using (var ms = new MemoryStream())
+            {
+                await download.Value.Content.CopyToAsync(ms);
+                
+                return new ByteNameContainer()
+                {
+                    FileName = message.Content,
+                    Bytes = ms.ToArray()
+                };
+            }
+        }
+
+        return null;
+    }
+
+    /*
     public async Task<string> UploadFile(string fileName, int senderId, byte[] file)
     {
         try
@@ -122,8 +179,9 @@ public class MessageRepositoryMongoDb : IMessagesRepository
             return "";
         }
         
-    }
+    } */
 
+    /*
     public async Task<ByteNameContainer?> DownloadFile(int messageId)
     {
         var message = await GetSentMessage(messageId);
@@ -153,7 +211,7 @@ public class MessageRepositoryMongoDb : IMessagesRepository
             Console.WriteLine(e);
             return null;
         }
-    }
+    } */
 
     public async Task<int> SendMessage(Message message)
     {

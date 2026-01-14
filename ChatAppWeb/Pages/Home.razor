@@ -10,12 +10,9 @@
 <PageTitle>Messages</PageTitle>
 
 <!-- Todo: 
-    1. When getting messages, if getting 15 messages and there are no more, the option to 'show more messages' is still there
-    (Fetch 1 more message or user to check if more exist)
     3. Make UI prettier (probably never going to happen)
     5. Front page has weird height of nothing above it self
     6. Create Token (use systems design guy on youtube)
-    7. Change Azure Filestorage to BLOBS instead
 -->
 
 @if (_currentUser == null)
@@ -175,7 +172,7 @@ else
                                 <div class="userMessage" @onclick="() => ShowTimestamp(message.MessageId)">
                                     @if (message.IsFile)
                                     {
-                                        <span @onclick="() => DownloadFile(message.MessageId)" style="color: blue; text-decoration: underline" class="messageContent">@message.Content</span>
+                                        <span @onclick="() => DownloadFile(message.MessageId)" style="color: blue; text-decoration: underline" class="messageContent">@(message.Content.Length > maxFileNameLength ? message.Content.Substring(0, maxFileNameLength) : message.Content)</span>
                                     }
                                     else
                                     {
@@ -194,7 +191,7 @@ else
                             <div class="receiverMessage" @onclick="() => ShowTimestamp(message.MessageId)">
                                 @if (message.IsFile)
                                 {
-                                    <span @onclick="() => DownloadFile(message.MessageId)" style="color: blue; text-decoration: underline" class="messageContent">@message.Content</span>
+                                    <span @onclick="() => DownloadFile(message.MessageId)" style="color: blue; text-decoration: underline" class="messageContent">@(message.Content.Length > maxFileNameLength ? message.Content.Substring(0, maxFileNameLength) : message.Content)</span>
                                 }
                                 else
                                 {
@@ -649,7 +646,7 @@ else
             await file.OpenReadStream(maxFileSize).CopyToAsync(memoryStream);
             fileBytes = memoryStream.ToArray();
 
-            newText = file.Name.Length > maxFileNameLength ? file.Name.Substring(0, maxFileNameLength) : file.Name;
+            newText = file.Name;
            
             MessageFileContainer container = new MessageFileContainer
             {

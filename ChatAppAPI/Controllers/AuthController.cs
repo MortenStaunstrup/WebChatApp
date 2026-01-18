@@ -1,6 +1,9 @@
 ﻿using ChatAppAPI.Repositories.Interfaces;
+using ChatAppAPI.Token;
 using Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 
 namespace ChatAppAPI.Controllers;
 
@@ -9,10 +12,22 @@ namespace ChatAppAPI.Controllers;
 public class AuthController : ControllerBase
 {
     IUserRepository userRepository;
-
-    public AuthController(IUserRepository userRepository)
+    TokenProvider _tokenProvider;
+    
+    public AuthController(IUserRepository userRepository, TokenProvider tokenProvider)
     {
         this.userRepository = userRepository;
+        this._tokenProvider = tokenProvider;
+    }
+    
+    private int DecodeAuthHeader(StringValues authHeader, out string token)
+    {
+        token = string.Empty;
+        var tokenWithBearer = authHeader[0];
+        if (string.IsNullOrEmpty(tokenWithBearer))
+            return 0;
+        token = tokenWithBearer.Remove(0, 7);
+        return 1;
     }
     
     [HttpGet]
@@ -24,10 +39,16 @@ public class AuthController : ControllerBase
             return BadRequest("Server down");
         
         if(result.UserId == 0)
-            return Unauthorized("Not user found");
+            return Unauthorized("User not found");
 
         result.Password = "placeholder";
-        return Ok(result);
+        string token = _tokenProvider.Create(result);
+        var dto = new UserTokenDTO()
+        {
+            User = result,
+            Token = token
+        };
+        return Ok(dto);
     }
 
     [HttpPost]
@@ -44,6 +65,7 @@ public class AuthController : ControllerBase
 
     [HttpGet]
     [Route("getquery/{query}/{limit:int}/{page:int}")]
+    [Authorize]
     public async Task<IActionResult> GetQueriedUsers(string query, int limit, int page)
     {
         var result = await userRepository.GetQueriedUsers(query, limit, page);
@@ -59,6 +81,7 @@ public class AuthController : ControllerBase
 
     [HttpGet]
     [Route("getuser/{id:int}")]
+    [Authorize]
     public async Task<IActionResult> GetUser(int id)
     {
         var result = await userRepository.GetUserByUserIdAsync(id);
@@ -69,8 +92,22 @@ public class AuthController : ControllerBase
 
     [HttpPut]
     [Route("update")]
+    [Authorize]
     public async Task<IActionResult> UpdateUser(ProfileUser user)
     {
+        Request.Headers.TryGetValue("Authorization", out var values);
+        int decodeResult = DecodeAuthHeader(values, out string token);
+        if (decodeResult == 0)
+            return BadRequest();
+        
+        var authId = _tokenProvider.GetUserId(token);
+        if (authId < 1)
+            return BadRequest();
+        
+        // Make sure user Token corresponds to user
+        if (authId != user.UserId)
+            return Unauthorized();
+        
         var result = await userRepository.UpdateUser(user);
         
         if (result == 0)
@@ -80,6 +117,5 @@ public class AuthController : ControllerBase
         
         return BadRequest();
     }
-    
     
 }

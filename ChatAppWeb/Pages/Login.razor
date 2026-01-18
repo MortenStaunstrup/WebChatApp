@@ -68,6 +68,7 @@
 
 @code {
     private User? _currentUser;
+    private string? _token;
     
     private string emailOrPhone;
     private string emailOrPhoneError;
@@ -81,8 +82,12 @@
     protected override async Task OnInitializedAsync()
     {
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
-        if(_currentUser != null)
+        _token = await LocalStorage.GetItemAsync<string>("token");
+        if(_currentUser != null && _token != null)
             NavigationManager.NavigateTo("/");
+
+        _currentUser = null;
+        _token = null;
     }
 
     private void OnPasswordChange(ChangeEventArgs e)
@@ -121,8 +126,11 @@
         var result = await Client.GetAsync($"auth/login/{emailOrPhone}/{Password}");
         if (result.IsSuccessStatusCode)
         {
-            var user = await result.Content.ReadFromJsonAsync<User>();
+            var dto = await result.Content.ReadFromJsonAsync<UserTokenDTO>();
+            var user = dto!.User;
+            var token = dto.Token;
             await LocalStorage.SetItemAsync("user", user);
+            await LocalStorage.SetItemAsync("token", token);
             NavigationManager.NavigateTo("/");
         }
 

@@ -1,5 +1,6 @@
 ﻿@page "/myprofile"
 @using System.Net
+@using System.Net.Http.Headers
 @using Core
 @inject NavigationManager NavMan
 @inject HttpClient Client
@@ -72,6 +73,7 @@
 
 @code {
     ProfileUser? user;
+    string? _token;
     EditContext EditContext;
     
     bool loaded;
@@ -101,12 +103,14 @@
     protected override async Task OnInitializedAsync()
     {
         user = await LocalStorage.GetItemAsync<ProfileUser>("user");
-        if (user == null)
+        _token = await LocalStorage.GetItemAsync<string>("token");
+        if (user == null || _token == null)
         {
             NavMan.NavigateTo("/register");
         }
         else
         {
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             var result = await Client.GetAsync($"auth/getuser/{user.UserId}");
             switch (result.StatusCode)
             {

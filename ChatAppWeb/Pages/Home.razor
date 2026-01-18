@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using System.Net
+@using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
 @using Core
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
@@ -10,9 +11,9 @@
 <PageTitle>Messages</PageTitle>
 
 <!-- Todo: 
+    1. Make Controllers verify token userId against request
     3. Make UI prettier (probably never going to happen)
     5. Front page has weird height of nothing above it self
-    6. Create Token (use systems design guy on youtube)
 -->
 
 @if (_currentUser == null)
@@ -233,6 +234,7 @@ else
     const string socketLocalHost = "http://localhost:5150";
     
     User? _currentUser;
+    string? _token;
     User? _otherPerson;
 
     List<User> _searchedUsers = new List<User>();
@@ -314,9 +316,13 @@ else
     protected override async Task OnInitializedAsync()
     {
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
+        _token = await LocalStorage.GetItemAsync<string>("token");
         
-        if (_currentUser != null)
+        
+        if (_currentUser != null && _token != null)
         {
+            // Sets the Authorization header for all API calls to be the token.
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             
             await GetConversations();
 
@@ -364,6 +370,10 @@ else
                 
                 case HttpStatusCode.NoContent:
                     noMoreConversations = true;
+                    break;
+                    
+                case HttpStatusCode.Unauthorized:
+                    NavMan.NavigateTo("/logout");
                     break;
                 
                 case HttpStatusCode.Conflict:
@@ -423,6 +433,10 @@ else
                 
                 hasPreviousConversations = true;
                 break;
+                
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
+                break;
         }
         
         StateHasChanged();
@@ -464,6 +478,9 @@ else
             _currentConvoMessages = new List<Message>();
             hasMessages = false;
             StateHasChanged();
+        } else if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            NavMan.NavigateTo("/logout");
         }
     }
 
@@ -484,7 +501,13 @@ else
             }
         }
 
-        await Client.PostAsJsonAsync("messages/updateSeen", newMessages);
+        var result = await Client.PostAsJsonAsync("messages/updateSeen", newMessages);
+        switch (result.StatusCode)
+        {
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
+                break;
+        }
     }
     
     private async Task OnSearchChange(ChangeEventArgs e)
@@ -520,6 +543,10 @@ else
                 StateHasChanged();
                 break;
                 
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
+                break;
+                
             case HttpStatusCode.Conflict:
                 Console.WriteLine("Oh no, something went wrong!!!");
                 break;
@@ -543,6 +570,10 @@ else
                 List<User> lastUsers = await response.Content.ReadFromJsonAsync<List<User>>();
                 _searchedUsers.AddRange(lastUsers);
                 moreUsers = false;
+                break;
+                
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
                 break;
                 
             case HttpStatusCode.NoContent:
@@ -578,6 +609,10 @@ else
                 
             case HttpStatusCode.NoContent:
                 noMoreMessages = true;
+                break;
+                
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
                 break;
                 
             case HttpStatusCode.Conflict:
@@ -622,6 +657,10 @@ else
                 
             case HttpStatusCode.NoContent:
                 noMoreConversations = true;
+                break;
+                
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
                 break;
                 
             case HttpStatusCode.Conflict:
@@ -675,11 +714,22 @@ else
     private async Task DownloadFile(int messageId)
     {
         var response = await Client.GetAsync($"messages/getFile{messageId}");
-        if (response.StatusCode == HttpStatusCode.Conflict)
+
+        switch (response.StatusCode)
         {
-            await FileCouldNotBeDownloadedError();
-            return;
+            case HttpStatusCode.BadRequest:
+                Console.WriteLine("Token deserialization did not work");
+                break;
+                
+            case HttpStatusCode.Conflict:
+                await FileCouldNotBeDownloadedError();
+                break;
+                
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
+                break;
         }
+ 
         var NameByteContainer = await response.Content.ReadFromJsonAsync<ByteNameContainer>();
         var asMemStream = new MemoryStream(NameByteContainer.Bytes);
 
@@ -747,13 +797,13 @@ else
                 await GetConversations();
                 currentConvo = convo;
             }
-            else
+            else if (postConvoResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Console.WriteLine("Something went wrong starting a new conversation");
+                Console.WriteLine("Post Convo failure");
+                //NavMan.NavigateTo("/logout");
             }
             
         }
-
         
         var response = await Client.PostAsJsonAsync("messages/createMessage", newMess);
         if (response.IsSuccessStatusCode)
@@ -791,6 +841,9 @@ else
                     if (hubConnection is not null)
                         await hubConnection.InvokeAsync("UpdateReceiverMessages", _otherPerson.UserId, _currentUser.UserId);
                     shouldScrollToBottom = true;
+                } else if (update.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    NavMan.NavigateTo("/logout");
                 }
                 else
                 {
@@ -800,11 +853,17 @@ else
                 newText = "";
                 
                 StateHasChanged();
+            } else if (newResponse.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                NavMan.NavigateTo("/logout");
             }
             else
             {
                 await ShowSentMessageCouldntBeFoundError();
             }
+        } else if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            NavMan.NavigateTo("/logout");
         }
         else
         {
@@ -937,6 +996,9 @@ else
             _previousConversations = zipped.Select(t => t.convo).ToList();
             _usersForPreviousConversations = zipped.Select(t => t.user).ToList();
             StateHasChanged();
+        } else if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            NavMan.NavigateTo("/logout");
         }
     }
     

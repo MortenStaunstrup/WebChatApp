@@ -9,6 +9,7 @@ using Azure.Storage.Blobs.Models;
 using System;
 using System.IO;
 using Azure.Identity;
+using Azure.Storage;
 
 namespace ChatAppAPI.Repositories;
 
@@ -32,7 +33,7 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         _messagesCollection = _mongoDatabase.GetCollection<Message>("Messages");
         _blobStorageClient = new BlobServiceClient(
             new Uri(Environment.GetEnvironmentVariable("AZURE_BLOBS_STORAGE_CONNECTION_STRING")),
-            new DefaultAzureCredential()
+            new StorageSharedKeyCredential(Environment.GetEnvironmentVariable("AZURE_FILESTORAGE_NAME"), Environment.GetEnvironmentVariable("AZURE_FILESTORAGE_KEY"))
             );
     }
     

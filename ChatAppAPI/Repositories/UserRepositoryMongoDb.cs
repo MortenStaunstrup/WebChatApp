@@ -55,41 +55,9 @@ public class UserRepositoryMongoDb : IUserRepository
         var hashedPassword = passwordHasher.VerifyHashedPassword(userExists, userExists.Password, password);
         if (hashedPassword == PasswordVerificationResult.Failed)
             return new User { UserId = 0 };
-        
-        var emailFilter = Builders<User>.Filter.Eq("Email", emailOrPhone);
-        var phoneFilter = Builders<User>.Filter.Eq("PhoneNumber", emailOrPhone);
-        var passwordFilter = Builders<User>.Filter.Eq("Password", userExists.Password);
-        
-        var emailPassFilter = Builders<User>.Filter.And(emailFilter, passwordFilter);
 
-        try
-        {
-            var emailResult = await _userCollection.FindAsync(emailPassFilter).Result.FirstOrDefaultAsync();
+        return userExists;
 
-            if (emailResult != null)
-                return emailResult;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            return null;
-        }
-
-        try
-        {
-            var phonePassResult = await _userCollection.FindAsync(phoneFilter).Result.FirstOrDefaultAsync();
-            
-            if(phonePassResult != null)
-                return phonePassResult;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            return null;
-        }
-        
-        return new User(){UserId = 0};
-        
     }
 
     public async Task<User?> CreateUser(User user)

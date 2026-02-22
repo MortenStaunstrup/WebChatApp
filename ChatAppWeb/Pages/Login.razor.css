@@ -1,4 +1,12 @@
-﻿.loginCard{
+﻿.alertCenter {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    width: fit-content;
+}
+
+.loginCard{
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;

@@ -920,7 +920,7 @@ else
     private async Task ConnectToWebSocketServer()
     {
         hubConnection = new HubConnectionBuilder()
-            .WithUrl($"{socketAzure}/chatMe?userid={_currentUser.UserId}")
+            .WithUrl($"{socketLocalHost}/chatMe?userid={_currentUser.UserId}")
             .Build();
 
         hubConnection.On<int>("UpdateMessages", UpdateMessages);

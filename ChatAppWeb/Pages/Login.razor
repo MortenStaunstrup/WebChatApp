@@ -6,9 +6,9 @@
 @inject HttpClient Client
 <PageTitle>Login</PageTitle>
 
-@if (failed)  //TODO figure out how to give the div the right size
+@if (failed)
 {
-    <div class="alert alert-danger" style="position: absolute; left: 0; right: 0; margin: auto 350px auto 350px; ">
+    <div class="alert alert-danger alertCenter">
         @errorMessage
     </div>
 }

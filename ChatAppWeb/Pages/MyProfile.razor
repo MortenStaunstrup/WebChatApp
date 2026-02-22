@@ -16,14 +16,14 @@
             
             @if (error)
             {
-                <div class="alert alert-danger" role="alert">
+                <div class="alert alert-danger alertCenter" role="alert">
                     Oops, something went wrong
                 </div>
             }
             
             @if (success)
             {
-                <div class="alert alert-success" role="alert">
+                <div class="alert alert-success alertCenter" role="alert">
                     Successfully updated profile
                 </div>
             }
@@ -174,8 +174,9 @@
         if (response.IsSuccessStatusCode)
         {
             await LocalStorage.SetItemAsync("user", user);
-            userAlExists = ""; 
-            success = true;
+            userAlExists = "";
+            await HandleSuccess();
+            return;
         }
         
         else if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -186,6 +187,15 @@
         
         StateHasChanged();
         
+    }
+
+    private async Task HandleSuccess()
+    {
+        success = true;
+        StateHasChanged();
+        await Task.Delay(2000);
+        success = false;
+        StateHasChanged();
     }
 
     // Removes excess whitespace from firstname and lastname fields

@@ -23,12 +23,12 @@
 
         <div class="loginCard">
             <div>
-                <input id="emailORphone" placeholder="Email or Phone number" @onchange="OnEmailPhoneChange">
+                <input id="emailORphone" placeholder="Email or Phone number" @onchange="OnEmailPhoneChange" @onkeyup="Enter">
                 <p style="color: red">@emailOrPhoneError</p>
             </div>
 
             <div>
-                <input id="password" placeholder="Password" type="password" @onchange="OnPasswordChange">
+                <input id="password" placeholder="Password" type="password" @onchange="OnPasswordChange" @onkeyup="Enter">
                 <p style="color: red">@passwordError</p>
             </div>
 
@@ -88,6 +88,14 @@
 
         _currentUser = null;
         _token = null;
+    }
+
+    private void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            TryLogin();
+        }
     }
 
     private void OnPasswordChange(ChangeEventArgs e)

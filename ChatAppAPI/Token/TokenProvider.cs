@@ -1,5 +1,6 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Core;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -27,7 +28,7 @@ public class TokenProvider(IConfiguration configuration)
             Expires = DateTime.UtcNow.AddMinutes(configuration.GetValue<int>("Jwt:ExpirationInMinutes")),
             SigningCredentials =  credentials,
             Issuer = configuration.GetValue<string>("Jwt:Issuer"),
-            Audience = configuration.GetValue<string>("Jwt:Audience"),
+            Audience = configuration.GetValue<string>("Jwt:Audience")
         };
 
         var handler = new JsonWebTokenHandler();
@@ -50,5 +51,10 @@ public class TokenProvider(IConfiguration configuration)
         
         int.TryParse(userId, out int result);
         return result;
+    }
+
+    public string GenerateRefreshToken()
+    {
+        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
     }
 }

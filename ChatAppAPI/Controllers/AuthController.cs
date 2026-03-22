@@ -39,14 +39,44 @@ public class AuthController : ControllerBase
             return BadRequest("Server down");
         
         if(result.UserId == 0)
-            return Unauthorized("User not found");
+            return Unauthorized("User not found, or password is incorrect");
 
         result.Password = "placeholder";
         string token = _tokenProvider.Create(result);
+        var refreshToken = await userRepository.CreateRefreshToken(result.UserId);
+        if (refreshToken == null || string.IsNullOrWhiteSpace(refreshToken))
+            return BadRequest("Server down");
+        
         var dto = new UserTokenDTO()
         {
             User = result,
-            Token = token
+            Token = token,
+            RefreshToken = refreshToken
+        };
+        return Ok(dto);
+    }
+    
+    // Login with refresh token endpoint
+    // Should create new refresh token AND jwt token
+    [HttpGet]
+    [Route("loginrefresh/{userId:int}")]
+    public async Task<IActionResult> LoginWithRefreshToken(int userId, [FromHeader(Name = "RefreshToken")] string refreshToken)
+    {
+        var res = await userRepository.CheckRefreshToken(refreshToken);
+        if (res == null || string.IsNullOrWhiteSpace(res))
+            return Unauthorized();
+
+        var user = await userRepository.GetUserByUserIdAsync(userId);
+        if (user == null)
+            throw new ApplicationException("User not found in login refresh token endpoint");
+        
+        var newRefreshToken = await userRepository.CreateRefreshToken(userId);
+        string token = _tokenProvider.Create(user);
+        var dto = new UserTokenDTO()
+        {
+            User = user,
+            Token = token,
+            RefreshToken = newRefreshToken
         };
         return Ok(dto);
     }
@@ -111,7 +141,7 @@ public class AuthController : ControllerBase
         var result = await userRepository.UpdateUser(user);
         
         if (result == 0)
-            return Unauthorized();
+            return Conflict();
         if (result == 1)
             return Ok();
         

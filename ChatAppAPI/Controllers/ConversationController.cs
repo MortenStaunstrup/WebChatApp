@@ -36,6 +36,7 @@ public class ConversationController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     [Route("getConversations/{userId:int}/{limit:int}/{page:int}")]
     public async Task<IActionResult> GetConversationsAsync(int userId, int limit, int page)
     {
@@ -91,6 +92,7 @@ public class ConversationController : ControllerBase
     
     
     [HttpPost]
+    [Authorize]
     [Route("update")]
     public async Task<IActionResult> UpdateConversation(Conversation conversation)
     {
@@ -115,6 +117,7 @@ public class ConversationController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     [Route("updateSeenStatus")]
     public async Task<IActionResult> UpdateConversationSeenStatus(Conversation conversation)
     {
@@ -138,6 +141,7 @@ public class ConversationController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     [Route("get/{userId:int}/{otherPersonId:int}")]
     public async Task<IActionResult> GetConversation(int userId, int otherPersonId)
     {
@@ -173,6 +177,7 @@ public class ConversationController : ControllerBase
 
 
     [HttpPost]
+    [Authorize]
     [Route("create")]
     public async Task<IActionResult> CreateConversation(Conversation conversation)
     {

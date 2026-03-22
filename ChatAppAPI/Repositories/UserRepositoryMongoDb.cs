@@ -1,5 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using ChatAppAPI.Repositories.Interfaces;
+using ChatAppAPI.Token;
 using Core;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Identity;
@@ -14,9 +15,11 @@ public class UserRepositoryMongoDb : IUserRepository
     private readonly IMongoClient _mongoClient;
     private readonly IMongoDatabase _mongoDatabase;
     private readonly IMongoCollection<User> _userCollection;
-     
+    private readonly IMongoCollection<RefreshToken> _refreshTokenCollection;
+    TokenProvider _tokenProvider;
+    private readonly int refreshTokenExpirationTimeInDays;
 
-    public UserRepositoryMongoDb()
+    public UserRepositoryMongoDb(TokenProvider tokenProvider, IConfiguration configuration)
     {
         _connectionString = Environment.GetEnvironmentVariable("MONGO_CONNECTION_STRING");
         if (string.IsNullOrEmpty(_connectionString))
@@ -26,6 +29,78 @@ public class UserRepositoryMongoDb : IUserRepository
         _mongoClient = new MongoClient(_connectionString);
         _mongoDatabase = _mongoClient.GetDatabase("ChatApp");
         _userCollection = _mongoDatabase.GetCollection<User>("Users");
+        _refreshTokenCollection = _mongoDatabase.GetCollection<RefreshToken>("RefreshTokens");
+        _tokenProvider = tokenProvider;
+        refreshTokenExpirationTimeInDays = configuration.GetValue<int>("Jwt:RefreshTokenExpirationInDays");
+    }
+
+    // Called from LoginWithRefreshToken endpoint
+    public async Task<string> CheckRefreshToken(string refreshToken)
+    {
+        var filter = Builders<RefreshToken>.Filter.Eq("Token", refreshToken);
+        var refreshTokenResult = await _refreshTokenCollection.Find(filter).FirstOrDefaultAsync();
+        if (refreshTokenResult == null)
+            return "";
+        
+        if (refreshTokenResult.ExpiresOnUTC < DateTime.UtcNow)
+            return "";
+        
+        return refreshTokenResult.Token;
+    }
+
+    public async Task<string> CreateRefreshToken(int userId)
+    {
+        var userToken = await RefreshTokenForUserExists(userId);
+        // Refresh existing token
+        if (userToken != null)
+        {
+            try
+            {
+                var token = _tokenProvider.GenerateRefreshToken();
+                var savedToken = new RefreshToken()
+                {
+                    Token = token,
+                    Id = userToken.Id,
+                    UserId = userId,
+                    ExpiresOnUTC = DateTime.UtcNow.AddDays(refreshTokenExpirationTimeInDays)
+                };
+                await _refreshTokenCollection.ReplaceOneAsync(r => r.Id == savedToken.Id, savedToken);
+                return token;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return "";
+            }
+        }
+        // Create new refresh token
+        try
+        {
+            var newId = await GetMaxRefreshTokenId() + 1;
+            var token = _tokenProvider.GenerateRefreshToken();
+            var savedToken = new RefreshToken()
+            {
+                Token = token,
+                Id = newId,
+                UserId = userId,
+                ExpiresOnUTC = DateTime.UtcNow.AddDays(refreshTokenExpirationTimeInDays)
+            };
+            await _refreshTokenCollection.InsertOneAsync(savedToken);
+            return token;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return "";
+        }
+    }
+
+    // Used by CreateRefreshToken function
+    private async Task<RefreshToken?> RefreshTokenForUserExists(int userId)
+    {
+        var filter = Builders<RefreshToken>.Filter.Eq("UserId", userId);
+        var refreshToken = await _refreshTokenCollection.Find(filter).FirstOrDefaultAsync();
+        return refreshToken;
     }
 
     private async Task<User?> GetUserByPhoneOrEmail(string PhoneOrEmail)
@@ -62,7 +137,7 @@ public class UserRepositoryMongoDb : IUserRepository
 
     public async Task<User?> CreateUser(User user)
     {
-        user.UserId = await GetMaxId() + 1;
+        user.UserId = await GetMaxUserId() + 1;
         
         var userExists = await UserExists(user.Email, user.PhoneNumber);
         
@@ -211,8 +286,20 @@ public class UserRepositoryMongoDb : IUserRepository
         }
         return false;
     }
+
+    private async Task<int> GetMaxRefreshTokenId()
+    {
+        var filter = Builders<RefreshToken>.Filter.Empty;
+        
+        var result = await _refreshTokenCollection
+            .Find(filter)
+            .SortByDescending(u => u.Id)
+            .Limit(1)
+            .FirstOrDefaultAsync();
+        return result?.Id ?? 0;
+    }
     
-    private async Task<int> GetMaxId()
+    private async Task<int> GetMaxUserId()
     {
         var filter = Builders<User>.Filter.Empty;
         

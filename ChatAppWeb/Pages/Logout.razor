@@ -15,6 +15,7 @@
         {
             await LocalStorage.RemoveItemAsync("user");
             await LocalStorage.RemoveItemAsync("token");
+            await LocalStorage.RemoveItemAsync("refresh");
         }
         
         NavMan.NavigateTo("login", true);

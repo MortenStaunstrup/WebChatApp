@@ -29,3 +29,8 @@ Database: MongoDB
 Real-time Communication: C# (SignalR) (WebSockets)  
 Getting Started  
 Clone the repo and try it for yourself  
+
+### V3:
+
+Upped the security on the API with authorization and authentication using JWT and serverside logic for handling specific authorization
+Refresh tokens (WIP)

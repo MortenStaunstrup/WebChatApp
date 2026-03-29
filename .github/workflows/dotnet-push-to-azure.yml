@@ -50,6 +50,9 @@ jobs:
       - name: Publish API
         run: dotnet publish ${{ env.API_PROJECT_PATH }} --configuration Release --no-restore --no-build --property:PublishDir=${{ env.PUBLISH_DIR}}
       
+      - name: Use Production config for WebApp
+        run: cp ./ChatAppWeb/wwwroot/appsettings.Production.json ./ChatAppWeb/wwwroot/appsettings.json
+
       - name: Publish WebApp
         run: dotnet publish ${{ env.WEB_PROJECT_PATH }} --configuration Release --no-restore --no-build --property:PublishDir=${{ env.PUBLISH_DIR}}
 

@@ -2,11 +2,13 @@
 @using System.Net
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
+@using DotNetEnv
 @using Core
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager NavMan
 @inject HttpClient Client
 @inject IJSRuntime JS
+@inject IConfiguration Config
 
 <PageTitle>Messages</PageTitle>
 
@@ -233,8 +235,7 @@ else
 
 
 @code{
-    const string socketAzure = "https://chatappmesocket.azurewebsites.net";
-    const string socketLocalHost = "http://localhost:5150";
+    string? SocketPath;
     
     User? _currentUser;
     string? _token;
@@ -329,6 +330,13 @@ else
             Client.DefaultRequestHeaders.Clear();
             Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             Client.DefaultRequestHeaders.Add("RefreshToken", _refreshToken);
+            
+            SocketPath = Config["SocketPath"];
+
+            if (SocketPath is null)
+            {
+                throw new ApplicationException("Missing environment variable SOCKET_PATH");
+            }
             
             await GetConversations();
 
@@ -1085,7 +1093,7 @@ else
     private async Task ConnectToWebSocketServer()
     {
         hubConnection = new HubConnectionBuilder()
-            .WithUrl($"{socketLocalHost}/chatMe?userid={_currentUser.UserId}")
+            .WithUrl($"{SocketPath}/chatMe?userid={_currentUser.UserId}")
             .Build();
 
         hubConnection.On<int>("UpdateMessages", UpdateMessages);

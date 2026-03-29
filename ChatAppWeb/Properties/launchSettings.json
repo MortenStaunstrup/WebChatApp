@@ -21,5 +21,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
-  }
+  },
+  "BaseApiPath": "http://localhost:5154/api/",
+  "SocketPath": "http://localhost:5150"
 }

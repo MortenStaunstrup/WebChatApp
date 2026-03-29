@@ -54,19 +54,19 @@ jobs:
         run: dotnet publish ${{ env.WEB_PROJECT_PATH }} --configuration Release --no-restore --no-build --property:PublishDir=${{ env.PUBLISH_DIR}}
 
       - name: Publish Artifacts for WebSocket
-        uses: actions/upload-artifacts@v4
+        uses: actions/upload-artifact@v4
         with:
           name: Web Socket
           path: ${{ env.AZURE_SOCKET_PACKAGE_PATH}}
       
       - name: Publish Artifacts for API
-        uses: actions/upload-artifacts@v4
+        uses: actions/upload-artifact@v4
         with:
           name: API
           path: ${{ env.AZURE_API_PACKAGE_PATH}}
       
       - name: Publish Artifacts for WebApp
-        uses: actions/upload-artifacts@v4
+        uses: actions/upload-artifact@v4
         with:
           name: Web App
           path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH}}

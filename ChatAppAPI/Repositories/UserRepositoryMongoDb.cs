@@ -51,7 +51,7 @@ public class UserRepositoryMongoDb : IUserRepository
     public async Task<string> CreateRefreshToken(int userId)
     {
         var userToken = await RefreshTokenForUserExists(userId);
-        // Refresh existing token
+        // Refresh existing token 
         if (userToken != null)
         {
             try

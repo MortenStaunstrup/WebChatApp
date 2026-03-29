@@ -1,0 +1,79 @@
+* [33m1cdbb23[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mrefreshToken[m[33m)[m Shuuf
+* [33mcc74a12[m stfu
+*   [33mea9800d[m Merge branch 'main' of https://github.com/MortenStaunstrup/WebChatApp into refreshToken
+[32m|[m[33m\[m  
+[32m|[m *   [33mcfcd2a7[m Merge pull request #1 from MortenStaunstrup/refreshToken
+[32m|[m [34m|[m[35m\[m  
+* [34m|[m [35m|[m [33m210a06d[m Merge branch 'main' of https://github.com/MortenStaunstrup/WebChatApp into refreshToken
+[36m|[m[34m\[m[34m|[m [35m|[m 
+[36m|[m * [35m|[m [33m113c549[m Update README.md
+* [1;31m|[m [35m|[m [33m192d5f0[m Maybe added CI/CD pipeline
+[35m|[m [1;31m|[m[35m/[m  
+[35m|[m[35m/[m[1;31m|[m   
+* [1;31m|[m [33mf3a37cd[m[33m ([m[1;31morigin/refreshToken[m[33m)[m Refresh token added
+[1;31m|[m[1;31m/[m  
+* [33m92cf2ee[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Bit of CSS changes
+* [33m85d7b6d[m You can login using the enter key instead of having to press the login button
+* [33m8f44575[m Deleted unecessary code in trylogin
+* [33m31e212c[m Fixed access to Filestorage not working in deployment. Deleted old pictures from tutorial days
+* [33m922fa0b[m Added Json Web Tokens, authentication and authorization
+* [33mb3014ad[m App now uses BLOB storage instead of FileStorage in Azure
+* [33m69f1dbc[m Made pagination work better with
+* [33m0e3ef41[m Added comment
+* [33macc545c[m MyProfile page has profile picture now
+* [33mf38212a[m Comments
+* [33mb714aea[m Scroll to bottom logic finally fixed for 1st conversation clicked
+* [33mf528e6a[m Scroll to bottom now works. Better solution is needed though
+* [33m3819b22[m Added pagination and limit on getting previous conversations from db. Added mini profile picture to messages seen by receiver in previous conversations.
+* [33m22d1a58[m Fixed convos when sending message this time hopefully
+* [33m510ad86[m New conversations work now
+* [33ma800a00[m Fixed sending message, and Websocket not working on Azure
+* [33m8469e1f[m Added to tutorial
+* [33ma0337d4[m Made page and limit for searched users both be sent to controller and repository. Along with logic for showing see more for searched users
+* [33m97e1867[m Sorting logic for messages is working now. And the messages are limited and paginated still
+* [33m80d3238[m Limit and pagination on quried users
+* [33mc8e5b5a[m Removed todo of last commit
+* [33mecdf8a9[m Added scroll to bottom logic for messages when accessing old conversations
+* [33m1ee0a51[m Made new conversations work, even if abanoned initially and saved in db as empty string.
+* [33m7c6ad8e[m Added style to input file
+* [33m7e092b8[m Turned error handling into functions
+* [33mc318cc6[m Fixed resolution on create profile page
+* [33mab0084f[m Fixed file upload size, and random Console writeline bug
+* [33md3249a6[m Fixed bug that did not allow to updating seen status on messages and sending a new message BECAUSE OF A FUCKING '?'
+* [33m532a05d[m kjkj
+* [33m47b31ae[m Added loading bar
+*   [33m82f3044[m Merge remote-tracking branch 'origin/main'
+[1;32m|[m[1;33m\[m  
+[1;32m|[m * [33m551424c[m Update README.md
+[1;32m|[m * [33me71dc0a[m Update README.md
+[1;32m|[m * [33m66b915d[m Update README.md
+* [1;33m|[m [33m685e06e[m Added download file feature, along with same file name handling
+[1;33m|[m[1;33m/[m  
+* [33m920c829[m Convo changes
+*   [33mec4a749[m Merge remote-tracking branch 'origin/main'
+[1;34m|[m[1;35m\[m  
+[1;34m|[m * [33m9479e53[m Update README.md
+[1;34m|[m * [33mea975c8[m Update README.md
+[1;34m|[m * [33mb18b29f[m Update README.md
+* [1;35m|[m [33mf672027[m fff
+[1;35m|[m[1;35m/[m  
+* [33m10eca33[m Refactoring code in 'Home' to be in functions
+* [33m9a00216[m Seen by notifyer updated for current convo if receiver clicks on the conversation after being on other conversations
+* [33md7ce4ec[m Web socket added
+* [33ma1de68a[m Commit before trying to add WebSockets
+*   [33m6af5e5d[m Merge remote-tracking branch 'origin/main'
+[1;36m|[m[31m\[m  
+[1;36m|[m * [33m321af7d[m Update README.md
+[1;36m|[m * [33m75f5419[m Update README.md
+* [31m|[m [33mf2d51b7[m You can now write to yourself and have a conversation with yourself
+[31m|[m[31m/[m  
+* [33m229c36c[m Forgot to commit in a long while oops
+* [33m61b7d95[m Commit before making the API server into a websocket server
+* [33m761d1b5[m Misc missed
+* [33m8484a5d[m Checks and validation for register and login made. Wireframe for messages page made
+* [33mdf7f8fc[m Login page css and styling
+* [33m9fab19f[m Init commit
+* [33mf044fd8[m delete few pages
+* [33me51cb56[m Init commit
+* [33m9cb0a3f[m Update .gitignore
+* [33ma756230[m Initial commit

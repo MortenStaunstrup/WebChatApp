@@ -117,8 +117,6 @@ public class UserRepositoryMongoDb : IUserRepository
         return null;
     }
     
-    // The function above and below can be optimized (if user found with Number, don't try to find it with email in the bottom functoin)
-    // You know what maybe the whole bottom function can be rewritten
     public async Task<User?> TryLogin(string emailOrPhone, string password)
     {
         PasswordHasher<User> passwordHasher = new PasswordHasher<User>();

@@ -23,12 +23,16 @@
 
         <div class="loginCard">
             <div>
-                <input id="emailORphone" placeholder="Email or Phone number" @onchange="OnEmailPhoneChange" @onkeyup="Enter">
+                <input id="emailORphone" placeholder="Email or Phone number" 
+                       @onchange="OnEmailPhoneChange" 
+                       @onkeydown="Enter">
                 <p style="color: red">@emailOrPhoneError</p>
             </div>
 
             <div>
-                <input id="password" placeholder="Password" type="password" @onchange="OnPasswordChange" @onkeyup="Enter">
+                <input id="password" placeholder="Password" type="password" 
+                       @onchange="OnPasswordChange" 
+                       @onkeydown="Enter">
                 <p style="color: red">@passwordError</p>
             </div>
 
@@ -69,6 +73,7 @@
 @code {
     private User? _currentUser;
     private string? _token;
+    private string? _refreshToken;
     
     private string emailOrPhone;
     private string emailOrPhoneError;
@@ -83,11 +88,14 @@
     {
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
         _token = await LocalStorage.GetItemAsync<string>("token");
-        if(_currentUser != null && _token != null)
+        _refreshToken = await LocalStorage.GetItemAsync<string>("refresh");
+        
+        if(_currentUser != null && _token != null && _refreshToken != null)
             NavigationManager.NavigateTo("/");
 
         _currentUser = null;
         _token = null;
+        _refreshToken = null;
     }
 
     private void Enter(KeyboardEventArgs e)
@@ -137,8 +145,10 @@
             var dto = await result.Content.ReadFromJsonAsync<UserTokenDTO>();
             var user = dto!.User;
             var token = dto.Token;
+            var refresh = dto.RefreshToken;
             await LocalStorage.SetItemAsync("user", user);
             await LocalStorage.SetItemAsync("token", token);
+            await LocalStorage.SetItemAsync("refresh", refresh);
             NavigationManager.NavigateTo("/");
         }
 
@@ -153,7 +163,7 @@
             StateHasChanged();
         } else if (result.StatusCode == HttpStatusCode.Unauthorized)
         {
-            errorMessage = "User credentials wrong";
+            errorMessage = "Incorrect password or username";
             failed = true;
             StateHasChanged();
             await Task.Delay(3000);

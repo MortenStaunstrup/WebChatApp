@@ -11,7 +11,10 @@
 <PageTitle>Messages</PageTitle>
 
 <!-- Todo: 
+    0.1 On every UNAUTHORIZED try to login with refreshtoken
     1. IMPORTANT!!! Login takes very long time, fix query or otherwise optimize
+    1.1 May be free Azure and MongoDB causing the slow load times
+    2. Make data transferred to controllers not be in endpoints????? Maybe just request body????
     3. Make UI prettier (probably never going to happen)
     5. Front page has weird height of nothing above it self
 -->
@@ -235,6 +238,7 @@ else
     
     User? _currentUser;
     string? _token;
+    string? _refreshToken;
     User? _otherPerson;
 
     List<User> _searchedUsers = new List<User>();
@@ -317,12 +321,14 @@ else
     {
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
         _token = await LocalStorage.GetItemAsync<string>("token");
+        _refreshToken = await LocalStorage.GetItemAsync<string>("refresh");
         
-        
-        if (_currentUser != null && _token != null)
+        if (_currentUser != null && _token != null && _refreshToken != null)
         {
             // Sets the Authorization header for all API calls to be the token.
+            Client.DefaultRequestHeaders.Clear();
             Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+            Client.DefaultRequestHeaders.Add("RefreshToken", _refreshToken);
             
             await GetConversations();
 
@@ -333,6 +339,38 @@ else
             NavMan.NavigateTo("/login");
         }
         
+    }
+
+    private async Task UpdateRefreshTokenAndJwt(string refreshToken, string token)
+    {
+        await LocalStorage.SetItemAsync("refresh",  refreshToken);
+        await LocalStorage.SetItemAsync("token", token);
+        _refreshToken = refreshToken;
+        _token = token;
+        Client.DefaultRequestHeaders.Clear();
+        Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        Client.DefaultRequestHeaders.Add("RefreshToken", _refreshToken);
+    }
+
+    private async Task<bool> TryLoginWithRefreshToken()
+    {
+        var response = await Client.GetAsync($"auth/loginrefresh/{_currentUser.UserId}");
+        switch (response.StatusCode)
+        {
+            case HttpStatusCode.OK:
+                var result = await response.Content.ReadFromJsonAsync<UserTokenDTO>();
+                if (result == null)
+                    throw new ApplicationException("UserTokenDTO is null");
+                await UpdateRefreshTokenAndJwt(result.RefreshToken, result.Token);
+                return true;
+                break;
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
+                return false;
+                break;
+            default:
+                throw new ApplicationException("Unexpected HTTP status code from TryLoginWithRefreshToken");
+        }
     }
 
     private async Task GetConversations()
@@ -373,7 +411,15 @@ else
                     break;
                     
                 case HttpStatusCode.Unauthorized:
-                    NavMan.NavigateTo("/logout");
+                    var refreshLogin = await TryLoginWithRefreshToken();
+                    if (refreshLogin)
+                    {
+                        await GetConversations();
+                    }
+                    else
+                    {
+                        NavMan.NavigateTo("/logout");
+                    }
                     break;
                 
                 case HttpStatusCode.Conflict:
@@ -435,7 +481,15 @@ else
                 break;
                 
             case HttpStatusCode.Unauthorized:
-                NavMan.NavigateTo("/logout");
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await GetSpecificConversation(userId);
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
                 break;
         }
         
@@ -480,7 +534,15 @@ else
             StateHasChanged();
         } else if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            NavMan.NavigateTo("/logout");
+            var refreshLogin = await TryLoginWithRefreshToken();
+            if (refreshLogin)
+            {
+                await GetMessages(userId);
+            }
+            else
+            {
+                NavMan.NavigateTo("/logout");
+            }
         }
     }
 
@@ -505,7 +567,15 @@ else
         switch (result.StatusCode)
         {
             case HttpStatusCode.Unauthorized:
-                NavMan.NavigateTo("/logout");
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await UpdateSeenMessages();
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
                 break;
         }
     }
@@ -544,7 +614,15 @@ else
                 break;
                 
             case HttpStatusCode.Unauthorized:
-                NavMan.NavigateTo("/logout");
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await OnSearchChange(e);
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
                 break;
                 
             case HttpStatusCode.Conflict:
@@ -573,14 +651,25 @@ else
                 break;
                 
             case HttpStatusCode.Unauthorized:
-                NavMan.NavigateTo("/logout");
+                _newUserSearchPage--;
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await ShowMoreUsers();
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
                 break;
                 
             case HttpStatusCode.NoContent:
+                _newUserSearchPage--;
                 moreUsers = false;
                 break;
                 
             case HttpStatusCode.Conflict:
+                _newUserSearchPage--;
                 Console.WriteLine("Oh no, something went wrong!!!");
                 break;
                 
@@ -608,14 +697,25 @@ else
                 break;
                 
             case HttpStatusCode.NoContent:
+                _messagePage--;
                 noMoreMessages = true;
                 break;
                 
             case HttpStatusCode.Unauthorized:
-                NavMan.NavigateTo("/logout");
+                _messagePage--;
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await ShowMoreMessages();
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
                 break;
                 
             case HttpStatusCode.Conflict:
+                _messagePage--;
                 Console.WriteLine("Oh no, something went wrong!!!");
                 break;
         }
@@ -656,14 +756,25 @@ else
                 break;
                 
             case HttpStatusCode.NoContent:
+                _convoPage--;
                 noMoreConversations = true;
                 break;
                 
             case HttpStatusCode.Unauthorized:
-                NavMan.NavigateTo("/logout");
+                _convoPage--;
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await ShowMoreConversations();
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
                 break;
                 
             case HttpStatusCode.Conflict:
+                _convoPage--;
                 Console.WriteLine("Oops... Something went wrong");
                 break;
         }
@@ -694,11 +805,26 @@ else
                 File = fileBytes
             };
             var uploadResponse = await Client.PostAsJsonAsync("messages/sendFile", container);
-            
-            if (uploadResponse.StatusCode == HttpStatusCode.BadRequest)
+
+            switch (uploadResponse.StatusCode)
             {
-                await FileCouldNotBeUploadedError();
-                return;
+                case HttpStatusCode.OK:
+                    break;
+                case HttpStatusCode.Unauthorized:
+                    var refreshLogin = await TryLoginWithRefreshToken();
+                    if (refreshLogin)
+                    {
+                        await HandleFile(e);
+                    }
+                    else
+                    {
+                        NavMan.NavigateTo("/logout");
+                    }
+                    break;
+                case HttpStatusCode.BadRequest:
+                    await FileCouldNotBeUploadedError();
+                    return;
+                    break;
             }
             
             var path = await uploadResponse.Content.ReadAsStringAsync();
@@ -726,7 +852,15 @@ else
                 break;
                 
             case HttpStatusCode.Unauthorized:
-                NavMan.NavigateTo("/logout");
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await DownloadFile(messageId);
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
                 break;
         }
  
@@ -799,8 +933,15 @@ else
             }
             else if (postConvoResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Console.WriteLine("Post Convo failure");
-                //NavMan.NavigateTo("/logout");
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await SendMessage(isFile, path);
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
             }
             
         }
@@ -843,7 +984,15 @@ else
                     shouldScrollToBottom = true;
                 } else if (update.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    NavMan.NavigateTo("/logout");
+                    var refreshLogin = await TryLoginWithRefreshToken();
+                    if (refreshLogin)
+                    {
+                        await SendMessage(isFile, path);
+                    }
+                    else
+                    {
+                        NavMan.NavigateTo("/logout");
+                    }
                 }
                 else
                 {
@@ -855,7 +1004,15 @@ else
                 StateHasChanged();
             } else if (newResponse.StatusCode == HttpStatusCode.Unauthorized)
             {
-                NavMan.NavigateTo("/logout");
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await SendMessage(isFile, path);
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
             }
             else
             {
@@ -863,7 +1020,15 @@ else
             }
         } else if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            NavMan.NavigateTo("/logout");
+            var refreshLogin = await TryLoginWithRefreshToken();
+            if (refreshLogin)
+            {
+                await SendMessage(isFile, path);
+            }
+            else
+            {
+                NavMan.NavigateTo("/logout");
+            }
         }
         else
         {
@@ -998,7 +1163,15 @@ else
             StateHasChanged();
         } else if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            NavMan.NavigateTo("/logout");
+            var refreshLogin = await TryLoginWithRefreshToken();
+            if (refreshLogin)
+            {
+                await FindAndUpdateConversation(senderId);
+            }
+            else
+            {
+                NavMan.NavigateTo("/logout");
+            }
         }
     }
     
@@ -1009,17 +1182,30 @@ else
         _searchedUsers = new List<User>();
         var userResponse = await Client.GetAsync($"auth/getUser/{userId}");
 
-        if (userResponse.IsSuccessStatusCode)
+
+        switch (userResponse.StatusCode)
         {
-            _otherPerson = await userResponse.Content.ReadFromJsonAsync<User>();
-            userFound = true;
-        }
-        else
-        {
-            clickedUser = true;
-            userFound = false;
-            StateHasChanged();
-            return;
+            case HttpStatusCode.OK:
+                _otherPerson = await userResponse.Content.ReadFromJsonAsync<User>();
+                userFound = true;
+                break;
+            case HttpStatusCode.Unauthorized:
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await StartConvoWith(userId);
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
+                break;
+            case HttpStatusCode.NotFound:
+                clickedUser = true;
+                userFound = false;
+                StateHasChanged();
+                return;
+                break;
         }
 
         await GetSpecificConversation(userId);
@@ -1058,7 +1244,4 @@ else
         else
             await StartConvoWith(personA);
     }
-
-    
-
 }

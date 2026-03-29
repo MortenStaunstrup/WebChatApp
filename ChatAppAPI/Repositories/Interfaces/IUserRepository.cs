@@ -4,6 +4,8 @@ namespace ChatAppAPI.Repositories.Interfaces;
 
 public interface IUserRepository
 {
+    Task<string> CreateRefreshToken(int userId);
+    Task<string> CheckRefreshToken(string refreshToken);
     Task<User?> TryLogin(string emailOrPhone, string password);
     Task<User?> CreateUser(User user);
     Task<List<User>?> GetQueriedUsers(string query, int limit, int page);

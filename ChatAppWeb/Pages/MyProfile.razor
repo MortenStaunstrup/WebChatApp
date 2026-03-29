@@ -17,7 +17,7 @@
             @if (error)
             {
                 <div class="alert alert-danger alertCenter" role="alert">
-                    Oops, something went wrong
+                    @errorText
                 </div>
             }
             
@@ -74,11 +74,13 @@
 @code {
     ProfileUser? user;
     string? _token;
+    string? _refreshToken;
     EditContext EditContext;
     
     bool loaded;
 
     bool error = false;
+    string errorText = "";
     bool success = false;
 
     string userAlExists = "";
@@ -99,42 +101,95 @@
             editContext.NotifyFieldChanged(fieldIdentifier);
         }
     }
-
+    
+    private async Task UpdateRefreshTokenAndJwt(string refreshToken, string token)
+    {
+        await LocalStorage.SetItemAsync("refresh",  refreshToken);
+        await LocalStorage.SetItemAsync("token", token);
+        _refreshToken = refreshToken;
+        _token = token;
+        Client.DefaultRequestHeaders.Clear();
+        Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        Client.DefaultRequestHeaders.Add("RefreshToken", _refreshToken);
+    }
+    
+    private async Task<bool> TryLoginWithRefreshToken()
+    {
+        var response = await Client.GetAsync($"auth/loginrefresh/{user.UserId}");
+        switch (response.StatusCode)
+        {
+            case HttpStatusCode.OK:
+                var result = await response.Content.ReadFromJsonAsync<UserTokenDTO>();
+                if (result == null)
+                    throw new ApplicationException("UserTokenDTO is null");
+                await UpdateRefreshTokenAndJwt(result.RefreshToken, result.Token);
+                return true;
+                break;
+            case HttpStatusCode.Unauthorized:
+                NavMan.NavigateTo("/logout");
+                return false;
+                break;
+            default:
+                throw new ApplicationException("Unexpected HTTP status code from TryLoginWithRefreshToken");
+        }
+    }
+    
     protected override async Task OnInitializedAsync()
     {
         user = await LocalStorage.GetItemAsync<ProfileUser>("user");
         _token = await LocalStorage.GetItemAsync<string>("token");
-        if (user == null || _token == null)
+        _refreshToken = await LocalStorage.GetItemAsync<string>("refresh");
+        Client.DefaultRequestHeaders.Clear();
+        Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+        Client.DefaultRequestHeaders.Add("RefreshToken", _refreshToken);
+        
+        if (user == null || _token == null || _refreshToken == null)
         {
             NavMan.NavigateTo("/register");
         }
         else
         {
-            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-            var result = await Client.GetAsync($"auth/getuser/{user.UserId}");
-            switch (result.StatusCode)
-            {
-                case HttpStatusCode.NotFound:
-                    NavMan.NavigateTo("/register");
-                    break;
-                    
-                case HttpStatusCode.OK:
-                    var userResult = await result.Content.ReadFromJsonAsync<User>();
-                    user = new ProfileUser()
-                    {
-                        FirstName = userResult.FirstName,
-                        LastName = userResult.LastName,
-                        Email = userResult.Email,
-                        PhoneNumber = userResult.PhoneNumber,
-                        UserId = userResult.UserId,
-                        ProfilePicture = userResult.ProfilePicture
-                    };
-                    profilePic = userResult.ProfilePicture ?? "Pictures/noPic.png";
-                    break;
-            }
+            await GetUser();
         }
         EditContext = new EditContext(user!);
         loaded = true;
+    }
+
+    private async Task GetUser()
+    {
+        
+        var result = await Client.GetAsync($"auth/getuser/{user.UserId}");
+        switch (result.StatusCode)
+        {
+            case HttpStatusCode.NotFound:
+                NavMan.NavigateTo("/register");
+                break;
+                    
+            case HttpStatusCode.OK:
+                var userResult = await result.Content.ReadFromJsonAsync<User>();
+                user = new ProfileUser()
+                {
+                    FirstName = userResult.FirstName,
+                    LastName = userResult.LastName,
+                    Email = userResult.Email,
+                    PhoneNumber = userResult.PhoneNumber,
+                    UserId = userResult.UserId,
+                    ProfilePicture = userResult.ProfilePicture
+                };
+                profilePic = userResult.ProfilePicture ?? "Pictures/noPic.png";
+                break;
+            case HttpStatusCode.Unauthorized:
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    await GetUser();
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
+                break;
+        }
     }
 
     private async Task HandleFile(InputFileChangeEventArgs e)
@@ -142,11 +197,19 @@
         var file = e.File;
         if (file != null)
         {
-            using var memoryStream = new MemoryStream();
-            await file.OpenReadStream().CopyToAsync(memoryStream);
-            picBytes = memoryStream.ToArray();
-            profilePic = $"data:image/gif;base64,{Convert.ToBase64String(picBytes)}";
-            StateHasChanged();
+            try
+            {
+                using var memoryStream = new MemoryStream();
+                await file.OpenReadStream().CopyToAsync(memoryStream);
+                picBytes = memoryStream.ToArray();
+                profilePic = $"data:image/gif;base64,{Convert.ToBase64String(picBytes)}";
+                StateHasChanged();
+            }
+            catch (Exception exception)
+            {
+                // Log exception here with logging framework in the future
+                await HandleFileTooLarge();
+            }
         }
         else
         {
@@ -171,22 +234,56 @@
 
         var response = await Client.PutAsJsonAsync("auth/update", user);
 
-        if (response.IsSuccessStatusCode)
+        switch (response.StatusCode)
         {
-            await LocalStorage.SetItemAsync("user", user);
-            userAlExists = "";
-            await HandleSuccess();
-            return;
+            case HttpStatusCode.OK:
+                await LocalStorage.SetItemAsync("user", user);
+                userAlExists = "";
+                await HandleSuccess();
+                return;
+                break;
+            case HttpStatusCode.Conflict:
+                userAlExists = "User with email or phonenumber already exists";
+                break;
+            case HttpStatusCode.Unauthorized:
+                var refreshLogin = await TryLoginWithRefreshToken();
+                if (refreshLogin)
+                {
+                    HandleValidSubmit();
+                }
+                else
+                {
+                    NavMan.NavigateTo("/logout");
+                }
+                break;
+            case HttpStatusCode.BadRequest:
+                await HandleFileUpdateError();
+                break;
+                
         }
-        
-        else if (response.StatusCode == HttpStatusCode.Unauthorized)
-            userAlExists = "User with email or phonenumber already exists";
-        
-        else
-            error = true;
-        
         StateHasChanged();
-        
+    }
+    
+    private async Task HandleFileUpdateError()
+    {
+        errorText = "Ooops, something went wrong";
+        error = true;
+        StateHasChanged();
+        await Task.Delay(2000);
+        error = false;
+        errorText = "";
+        StateHasChanged();
+    }
+
+    private async Task HandleFileTooLarge()
+    {
+        errorText = "Profile picture too large, maximum is 520kb";
+        error = true;
+        StateHasChanged();
+        await Task.Delay(2000);
+        error = false;
+        errorText = "";
+        StateHasChanged();
     }
 
     private async Task HandleSuccess()

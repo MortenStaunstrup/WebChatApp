@@ -2,7 +2,6 @@
 @using System.Net
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
-@using DotNetEnv
 @using Core
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager NavMan
@@ -13,6 +12,7 @@
 <PageTitle>Messages</PageTitle>
 
 <!-- Todo:
+    0.0.1 Create Admin panel in seperate project for monitoring users, deleting users (user conversations/messages as well), revoking refresh tokens and more
     0.1 Implement RATE LIMITING on API
     0.2 Create CI/CD pipeline on Github??
     1. When user registers and redirected to login page, show message of "Account created successfully"
@@ -28,7 +28,7 @@
         <span>Authenticating...</span>
     </div>
 }
-else
+else if (loaded)
 {
     @if (messageNotSent)
     {
@@ -235,6 +235,8 @@ else
 
 
 @code{
+    bool loaded = false;
+    
     string? SocketPath;
     
     User? _currentUser;
@@ -320,6 +322,7 @@ else
     
     protected override async Task OnInitializedAsync()
     {
+        Console.WriteLine("Initializing Page");
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
         _token = await LocalStorage.GetItemAsync<string>("token");
         _refreshToken = await LocalStorage.GetItemAsync<string>("refresh");
@@ -346,7 +349,10 @@ else
         {
             NavMan.NavigateTo("/login");
         }
-        
+
+        loaded = true;
+        StateHasChanged();
+
     }
 
     private async Task UpdateRefreshTokenAndJwt(string refreshToken, string token)
@@ -392,7 +398,6 @@ else
                     noMoreConversations = false;
                     var conversationsContainer = await response.Content.ReadFromJsonAsync<ConversationsUsersContainer>();
                     _previousConversations.AddRange(conversationsContainer.Conversations);
-
                     foreach (var conversation in _previousConversations)
                     {
                         conversation.Timestamp = conversation.Timestamp.ToLocalTime();

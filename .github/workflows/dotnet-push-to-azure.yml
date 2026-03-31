@@ -59,7 +59,20 @@ jobs:
         run: dotnet publish ${{ env.API_PROJECT_PATH }} --configuration Release --no-restore --no-build -o "${{ env.API_PUBLISH_DIR }}"
 
       - name: Publish WebApp
-        run: dotnet publish ${{ env.WEB_PROJECT_PATH }} --configuration Release --no-restore --no-build -o "${{ env.WEB_PUBLISH_DIR }}"
+        run: dotnet publish ${{ env.WEB_PROJECT_PATH }} --configuration Release --no-restore -o "${{ env.WEB_PUBLISH_DIR }}"
+
+      - name: Inspect WebApp publish output
+        run: |
+          echo "=== Published files ==="
+          find "${{ env.WEB_PUBLISH_DIR }}" -maxdepth 4 -type f | sort
+
+          echo "=== appsettings files ==="
+          for f in $(find "${{ env.WEB_PUBLISH_DIR }}" -iname "appsettings*.json" -type f); do
+            echo "---- $f ----"
+            ls -l "$f"
+            cat "$f"
+            echo
+          done
 
       - name: Upload WebSocket artifact
         uses: actions/upload-artifact@v4

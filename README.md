@@ -33,4 +33,5 @@ Clone the repo and try it for yourself
 ### V3:
 
 Upped the security on the API with authorization and authentication using JWT and serverside logic for handling specific authorization
-Refresh tokens (WIP)
+Refresh tokens added
+CI/CD pipeline using GitHub Actions have been implemented

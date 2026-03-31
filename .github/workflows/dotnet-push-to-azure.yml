@@ -61,8 +61,8 @@ jobs:
       - name: Use Production config for WebApp
         run: cp ./ChatAppWeb/wwwroot/appsettings.Production.json ./ChatAppWeb/wwwroot/appsettings.json
 
-      - name: Publish WebApp
-        run: dotnet publish ${{ env.WEB_PROJECT_PATH }} --configuration Release --no-restore -o "${{ env.WEB_PUBLISH_DIR }}"
+      #- name: Publish WebApp
+       # run: dotnet publish ${{ env.WEB_PROJECT_PATH }} --configuration Release --no-restore -o "${{ env.WEB_PUBLISH_DIR }}"
         # intentionally NOT using --no-build because appsettings.json was changed
 
       - name: Upload WebSocket artifact

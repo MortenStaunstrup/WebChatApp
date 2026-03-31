@@ -25,9 +25,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Update="wwwroot\appsettings.json">
+      <Content Update="wwwroot/appsettings.json">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </Content>
+      <Content Update="wwwroot/appsettings.Production.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
       </Content>
     </ItemGroup>
 

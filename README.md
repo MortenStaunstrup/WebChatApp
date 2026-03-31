@@ -12,26 +12,26 @@ Messenger-style UI (contact list, chat window)
 Message history and persistence  
 Real-time messaging (powered by WebSockets)  
 
-Evolution
+- Tech Stack  
+  - Frontend: C# (Blazor Webassembly), CSS  
+  - Backend: C# (.net 9)  
+  - Database: MongoDB  
+
+## Evolution:
+
 ### V1:
 
-Used a REST API for sending and retrieving messages  
+- Used a REST API for sending and retrieving messages  
 Laid the groundwork for app architecture and UI  
 ### V2:
 
-Integrated a WebSocket server for event-driven, low-latency communication  
-Achieved instant message delivery  
-Improved scalability and user experience  
-Tech Stack  
-Frontend: C# (Blazor Webassembly), CSS  
-Backend: C# (.net 9)  
-Database: MongoDB  
-Real-time Communication: C# (SignalR) (WebSockets)  
-Getting Started  
-Clone the repo and try it for yourself  
+- Integrated a WebSocket server for event-driven, low-latency communication  
+- Achieved instant message delivery  
+- Improved scalability and user experience  
+- Real-time Communication: C# (SignalR) (WebSockets)  
 
 ### V3:
 
-Upped the security on the API with authorization and authentication using JWT and serverside logic for handling specific authorization  
-Refresh tokens added  
-CI/CD pipeline using GitHub Actions have been implemented
+- Upped the security on the API with authorization and authentication using JWT and serverside logic for handling specific authorization  
+- Refresh tokens added  
+- CI/CD pipeline using GitHub Actions have been implemented

@@ -1,4 +1,5 @@
 ﻿@page "/Login"
+@page "/Login/{successfullRegister:bool}"
 @using System.Net
 @using Core
 @inject NavigationManager NavigationManager
@@ -6,71 +7,84 @@
 @inject HttpClient Client
 <PageTitle>Login</PageTitle>
 
-@if (failed)
+@if (loaded)
 {
-    <div class="alert alert-danger alertCenter">
-        @errorMessage
+    @if (failed)
+    {
+        <div class="alert alert-danger alertCenter">
+            @errorMessage
+        </div>
+    }
+
+    @if (successfullRegister)
+    {
+    <div class="alerts alert alert-success" role="alert">
+        Successfully registered
+    </div>
+    }
+
+    <div class="container" style="display: flex; align-items: center; margin-top: 150px;">
+        <div class="firstHalf">
+            <img alt="company logo" src="Pictures/CompanyLogo.png"/>
+
+            <h1>For you, who want to connect with people</h1>
+
+            <p>[Placeholder] helps you connect to the people you most want to talk to, without hassle, without securing your data because idk how to do that yet...</p>
+
+            <div class="loginCard">
+                <div>
+                    <input id="emailORphone" placeholder="Email or Phone number" 
+                           @onchange="OnEmailPhoneChange" 
+                           @onkeydown="Enter">
+                    <p style="color: red">@emailOrPhoneError</p>
+                </div>
+
+                <div>
+                    <input id="password" placeholder="Password" type="password" 
+                           @onchange="OnPasswordChange" 
+                           @onkeydown="Enter">
+                    <p style="color: red">@passwordError</p>
+                </div>
+
+                <div>
+                    <span>Don't have an account? <a href="/register">SIGN IN</a></span>
+                </div>
+
+                <div class="loginButtonDiv">
+                    <button @onclick="TryLogin" class="btn btn-primary" id="loginButton">Login</button>
+                    <span><a href="#">Forgot your password?</a></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="pictureContainer">
+            <img alt="Example use of chat app" src="Pictures/LoginPicture.png"/>
+        </div>
+        
+    </div>
+
+    <div class="container">
+        <div class="footer">
+            <div>
+                <span>© MortyG</span>
+            </div>
+            <div>
+                <a href="#">Protection of data (there is none)</a>
+            </div>
+            <div>
+                <a href="#">Cookie policy</a>
+            </div>
+            <div>
+                <a href="#">Terms of use</a>
+            </div>
+        </div>
     </div>
 }
 
-<div class="container" style="display: flex; align-items: center; margin-top: 150px;">
-    <div class="firstHalf">
-        <img alt="company logo" src="Pictures/CompanyLogo.png"/>
-
-        <h1>For you, who want to connect with people</h1>
-
-        <p>[Placeholder] helps you connect to the people you most want to talk to, without hassle, without securing your data because idk how to do that yet...</p>
-
-        <div class="loginCard">
-            <div>
-                <input id="emailORphone" placeholder="Email or Phone number" 
-                       @onchange="OnEmailPhoneChange" 
-                       @onkeydown="Enter">
-                <p style="color: red">@emailOrPhoneError</p>
-            </div>
-
-            <div>
-                <input id="password" placeholder="Password" type="password" 
-                       @onchange="OnPasswordChange" 
-                       @onkeydown="Enter">
-                <p style="color: red">@passwordError</p>
-            </div>
-
-            <div>
-                <span>Don't have an account? <a href="/register">SIGN IN</a></span>
-            </div>
-
-            <div class="loginButtonDiv">
-                <button @onclick="TryLogin" class="btn btn-primary" id="loginButton">Login</button>
-                <span><a href="#">Forgot your password?</a></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="pictureContainer">
-        <img alt="Example use of chat app" src="Pictures/LoginPicture.png"/>
-    </div>
-    
-</div>
-
-<div class="container">
-    <div class="footer">
-        <div>
-            <span>© MortyG</span>
-        </div>
-        <div>
-            <a href="#">Protection of data (there is none)</a>
-        </div>
-        <div>
-            <a href="#">Cookie policy</a>
-        </div>
-        <div>
-            <a href="#">Terms of use</a>
-        </div>
-    </div>
-</div>
 
 @code {
+    private bool loaded = false;
+    
     private User? _currentUser;
     private string? _token;
     private string? _refreshToken;
@@ -84,6 +98,8 @@
     private bool failed;
     string errorMessage = "";
     
+    [Parameter] public bool successfullRegister { get; set; } = false;
+    
     protected override async Task OnInitializedAsync()
     {
         _currentUser = await LocalStorage.GetItemAsync<User>("user");
@@ -96,6 +112,23 @@
         _currentUser = null;
         _token = null;
         _refreshToken = null;
+
+        loaded = true;
+        StateHasChanged();
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        if (successfullRegister)
+            await SuccessfullyRegistered();
+    }
+    
+    private async Task SuccessfullyRegistered()
+    {
+        StateHasChanged();
+        await Task.Delay(3000);
+        successfullRegister = false;
+        StateHasChanged();
     }
 
     private void Enter(KeyboardEventArgs e)

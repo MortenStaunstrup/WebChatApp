@@ -19,8 +19,6 @@ var app = builder.Build();
 
 app.UseCors();
 
-app.MapGet("/", () => "Websocket Running");
-
 app.MapHub<UserHub>("/chatMe");
 
 app.Run();

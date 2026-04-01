@@ -156,7 +156,7 @@
         var response = await Client.PostAsJsonAsync("auth/create", _model as User);
         
         if(response.IsSuccessStatusCode)
-            NavMan.NavigateTo("/login");
+            NavMan.NavigateTo("/login/true");
         else if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
             userAlExists = "User with email or phonenumber already exists";

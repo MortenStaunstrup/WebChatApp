@@ -1,5 +1,4 @@
 ﻿@page "/"
-@page "/{successfullLogin:bool}"
 @using System.Net
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
@@ -56,13 +55,7 @@ else if (loaded)
             File could not be downloaded
         </div>
     }
-
-    if (successfullRegister)
-    {
-        <div class="alerts alert alert-success" role="alert">
-            Successfully registered
-        </div>
-    }
+    
     
     <div class="main">
         
@@ -297,8 +290,6 @@ else if (loaded)
     bool shouldScrollToBottom = false;
     bool isFirstConversationClicked = true;
     
-    [Parameter] public bool successfullRegister { get; set; } = false;
-    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -362,12 +353,6 @@ else if (loaded)
         loaded = true;
         StateHasChanged();
 
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (successfullRegister)
-            await SuccessfullyRegistered();
     }
 
     private async Task UpdateRefreshTokenAndJwt(string refreshToken, string token)
@@ -1109,15 +1094,7 @@ else if (loaded)
         fileSizeTooLarge = false;
         StateHasChanged();
     }
-
-    private async Task SuccessfullyRegistered()
-    {
-        successfullRegister = true;
-        StateHasChanged();
-        await Task.Delay(3000);
-        successfullRegister = false;
-        StateHasChanged();
-    }
+    
 
     private async Task ConnectToWebSocketServer()
     {

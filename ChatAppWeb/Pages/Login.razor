@@ -36,14 +36,16 @@
                 <div>
                     <input id="emailORphone" placeholder="Email or Phone number" 
                            @onchange="OnEmailPhoneChange" 
-                           @onkeydown="Enter">
+                           @onkeydown="Enter"
+                           @onkeyup="Enter">
                     <p style="color: red">@emailOrPhoneError</p>
                 </div>
 
                 <div>
                     <input id="password" placeholder="Password" type="password" 
                            @onchange="OnPasswordChange" 
-                           @onkeydown="Enter">
+                           @onkeydown="Enter"
+                           @onkeyup="Enter">
                     <p style="color: red">@passwordError</p>
                 </div>
 

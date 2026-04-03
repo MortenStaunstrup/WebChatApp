@@ -1,4 +1,5 @@
 ﻿using Core;
+using Core.DTOs;
 
 namespace ChatAppAPI.Repositories.Interfaces;
 

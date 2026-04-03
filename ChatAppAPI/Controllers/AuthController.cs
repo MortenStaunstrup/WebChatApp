@@ -1,6 +1,7 @@
 ﻿using ChatAppAPI.Repositories.Interfaces;
 using ChatAppAPI.Token;
 using Core;
+using Core.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -30,11 +31,12 @@ public class AuthController : ControllerBase
         return 1;
     }
     
-    [HttpGet]
-    [Route("login/{emailOrPhone}/{password}")]
-    public async Task<IActionResult> TryLogin(string emailOrPhone, string password)
+    // Changed from GET to POST for security reasons (GET's are cached in the browser, BODY gives more security)
+    [HttpPost]
+    [Route("login")]
+    public async Task<IActionResult> TryLogin([FromBody] LoginRecord loginCredentials)
     {
-        var result = await userRepository.TryLogin(emailOrPhone, password);
+        var result = await userRepository.TryLogin(loginCredentials.EmailOrPhone, loginCredentials.Password);
         if (result == null)
             return BadRequest("Server down");
         

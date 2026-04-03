@@ -1,4 +1,5 @@
 ﻿using Core;
+using Core.DTOs;
 using Microsoft.AspNetCore.SignalR;
 
 namespace HubServer;

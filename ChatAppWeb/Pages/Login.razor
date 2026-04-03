@@ -1,6 +1,7 @@
 ﻿@page "/Login"
 @page "/Login/{successfullRegister:bool}"
 @using System.Net
+@using Core.DTOs
 @using Core
 @inject NavigationManager NavigationManager
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
@@ -18,7 +19,7 @@
 
     @if (successfullRegister)
     {
-    <div class="alerts alert alert-success" role="alert">
+    <div class="alert alert-success alertCenter" role="alert">
         Successfully registered
     </div>
     }
@@ -174,7 +175,7 @@
             return;
         }
         
-        var result = await Client.GetAsync($"auth/login/{emailOrPhone}/{Password}");
+        var result = await Client.PostAsJsonAsync("auth/login", new LoginRecord(emailOrPhone, Password));
         if (result.IsSuccessStatusCode)
         {
             var dto = await result.Content.ReadFromJsonAsync<UserTokenDTO>();

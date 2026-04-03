@@ -2,6 +2,7 @@
 @using System.Net
 @using System.Net.Http.Headers
 @using Microsoft.AspNetCore.SignalR.Client
+@using Core.DTOs
 @using Core
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject NavigationManager NavMan
@@ -14,6 +15,8 @@
 <!-- Todo:
     0.0.1 Create Admin panel in seperate project for monitoring users, deleting users (user conversations/messages as well), revoking refresh tokens and more
     0.1 Implement RATE LIMITING on API
+    1. Implement logging system (maybe NLog, Loki and Grafana?) (Maybe an Azure solution??)
+    1.5 Create unit tests
     3. Make UI prettier (probably never going to happen)
     5. Front page has weird height of nothing above it self
 -->
@@ -850,7 +853,7 @@ else if (loaded)
     
     private async Task DownloadFile(int messageId)
     {
-        var response = await Client.GetAsync($"messages/getFile{messageId}");
+        var response = await Client.GetAsync($"messages/getFile/{messageId}");
 
         switch (response.StatusCode)
         {

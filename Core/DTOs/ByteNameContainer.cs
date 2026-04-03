@@ -1,4 +1,4 @@
-﻿namespace Core;
+﻿namespace Core.DTOs;
 
 public class ByteNameContainer
 {

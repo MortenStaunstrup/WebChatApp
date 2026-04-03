@@ -2,6 +2,7 @@
 using ChatAppAPI.Repositories.Interfaces;
 using ChatAppAPI.Token;
 using Core;
+using Core.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;

@@ -10,6 +10,7 @@ using System;
 using System.IO;
 using Azure.Identity;
 using Azure.Storage;
+using Core.DTOs;
 
 namespace ChatAppAPI.Repositories;
 

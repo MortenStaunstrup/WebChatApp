@@ -1,6 +1,7 @@
 ﻿using ChatAppAPI.Repositories.Interfaces;
 using ChatAppAPI.Token;
 using Core;
+using Core.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
@@ -111,7 +112,7 @@ public class MessagesController : ControllerBase
      }
 
      [HttpGet]
-     [Route("getFile{messageId:int}")]
+     [Route("getFile/{messageId:int}")]
      public async Task<IActionResult> GetFile(int messageId)
      {
           Request.Headers.TryGetValue("Authorization", out var values);

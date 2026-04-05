@@ -36,6 +36,8 @@ public class AuthController : ControllerBase
     [Route("login")]
     public async Task<IActionResult> TryLogin([FromBody] LoginRecord loginCredentials)
     {
+        if (loginCredentials == null)
+            return BadRequest();
         var result = await userRepository.TryLogin(loginCredentials.EmailOrPhone, loginCredentials.Password);
         if (result == null)
             return BadRequest("Server down");
@@ -64,6 +66,9 @@ public class AuthController : ControllerBase
     [Route("loginrefresh/{userId:int}")]
     public async Task<IActionResult> LoginWithRefreshToken(int userId, [FromHeader(Name = "RefreshToken")] string refreshToken)
     {
+        if (userId <= 0 || string.IsNullOrWhiteSpace(refreshToken))
+            return BadRequest();
+        
         var res = await userRepository.CheckRefreshToken(refreshToken);
         if (res == null || string.IsNullOrWhiteSpace(res))
             return Unauthorized();
@@ -74,12 +79,7 @@ public class AuthController : ControllerBase
         
         var newRefreshToken = await userRepository.CreateRefreshToken(userId);
         string token = _tokenProvider.Create(user);
-        var dto = new UserTokenDTO()
-        {
-            User = user,
-            Token = token,
-            RefreshToken = newRefreshToken
-        };
+        var dto = new TokensDto(token, newRefreshToken);
         return Ok(dto);
     }
 

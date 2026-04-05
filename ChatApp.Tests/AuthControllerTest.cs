@@ -6,6 +6,7 @@ using Core;
 using Core.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Range = Moq.Range;
 
 namespace ChatApp.Tests;
 
@@ -37,14 +38,18 @@ public sealed class AuthControllerTest
         _authController = new AuthController(_userRepository.Object, new TokenProvider(configRoot));
     }
     
+    // Login endpoint tests
+    //
+    //
+    
     [TestMethod]
     public async Task Login_returns_OK_response_with_valid_login_credentials()
     {
         // Arrange
-        _userRepository.Setup(repo => repo.TryLogin("random@email.com", "password123"))
+        _userRepository.Setup(repo => repo.TryLogin(It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(new User(){Email = "random@email.com", FirstName = "Maddie", LastName = "Johnson", Password = "password123", PhoneNumber = "84652648", UserId = 4});
         _userRepository.Setup(repo => repo.CreateRefreshToken(It.IsAny<int>()))
-            .ReturnsAsync("refresh-token-123");
+            .ReturnsAsync("new-refresh-token-123");
         var creds = new LoginRecord("random@email.com", "password123");
         
         // Act
@@ -55,9 +60,9 @@ public sealed class AuthControllerTest
         Assert.IsNotNull(result);
         Assert.IsInstanceOfType<OkObjectResult>(result);
         
-        var okObjectResult = (OkObjectResult)result;
+        var okObjectResult = result as OkObjectResult;
         
-        Assert.AreEqual(200, okObjectResult.StatusCode);
+        Assert.AreEqual(200, okObjectResult!.StatusCode);
         Assert.IsInstanceOfType<UserTokenDTO>(okObjectResult.Value);
         
         var userTokenDto = okObjectResult.Value as UserTokenDTO;
@@ -80,11 +85,12 @@ public sealed class AuthControllerTest
         var result = await _authController.TryLogin(creds);
         
         // Assert
+        Assert.IsNotNull(result);
         Assert.IsInstanceOfType<UnauthorizedObjectResult>(result);
         
-        var unauthorizedObjectResult = (UnauthorizedObjectResult)result;
+        var unauthorizedObjectResult = result as UnauthorizedObjectResult;
         
-        Assert.AreEqual(401, unauthorizedObjectResult.StatusCode);
+        Assert.AreEqual(401, unauthorizedObjectResult!.StatusCode);
     }
     
     [TestMethod]
@@ -99,10 +105,131 @@ public sealed class AuthControllerTest
         var result = await _authController.TryLogin(creds);
         
         // Assert
+        Assert.IsNotNull(result);
         Assert.IsInstanceOfType<BadRequestObjectResult>(result);
         
-        var badRequestObjectResult = (BadRequestObjectResult)result;
+        var badRequestObjectResult = result as BadRequestObjectResult;
         
-        Assert.AreEqual(400, badRequestObjectResult.StatusCode);
+        Assert.AreEqual(400, badRequestObjectResult!.StatusCode);
     }
+    
+    [TestMethod]
+    public async Task Login_returns_BadRequest_with_no_input()
+    {
+        // Arrange
+        LoginRecord? creds = null;
+        
+        // Act
+        var result = await _authController.TryLogin(creds);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<BadRequestResult>(result);
+        
+        var badRequestObjectResult = result as BadRequestResult;
+        
+        Assert.AreEqual(400, badRequestObjectResult!.StatusCode);
+    }
+    
+    // Login Refreshtoken endpoint tests
+    //
+    //
+    
+    [TestMethod]
+    public async Task Loginrefresh_with_valid_refreshtoken_and_userId_returns_OK_object_result_with_new_JWT_and_refresh_token()
+    {
+        // Arrange
+        var refreshToken = "refresh-token-123";
+        var oldToken = "veryoldtokenthatisnotgoingtobeusedandinstedgoingtoberefreshedaswell523552623%¤/%¤/¤/";
+        var userId = 4;
+        _userRepository.Setup(repo => repo.CheckRefreshToken(refreshToken))
+            .ReturnsAsync(refreshToken);
+        _userRepository.Setup(repo => repo.CreateRefreshToken(userId))
+            .ReturnsAsync("new-refresh-token-123");
+        _userRepository.Setup(repo => repo.GetUserByUserIdAsync(userId))
+            .ReturnsAsync(new User(){UserId = 4, Email = "randomemail", FirstName = "John", LastName = "Ygdrasil", Password = "randompassword", PhoneNumber = "78945612"});
+        
+        // Act
+        var result = await _authController.LoginWithRefreshToken(userId, refreshToken);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        
+        var okObjectResult = result as OkObjectResult;
+        Assert.AreEqual(200, okObjectResult!.StatusCode);
+        Assert.IsInstanceOfType<TokensDto>(okObjectResult.Value);
+        
+        var userTokenDto = okObjectResult.Value as TokensDto;
+        
+        Assert.IsNotNull(userTokenDto!.RefreshToken);
+        Assert.IsNotNull(userTokenDto.Token);
+        Assert.AreNotEqual(oldToken, userTokenDto.Token);
+        Assert.AreNotEqual(refreshToken, userTokenDto.RefreshToken);
+    }
+
+    [TestMethod]
+    public async Task Loginrefresh_returns_Badrequest_on_invalid_userId()
+    {
+        // Arrange
+        var randomToken = "random-token-123";
+        
+        // Act
+        var result = await _authController.LoginWithRefreshToken(It.IsInRange(0, int.MinValue, Range.Inclusive), randomToken);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<BadRequestResult>(result);
+    }
+    
+    [TestMethod]
+    public async Task Loginrefresh_with_missing_parameters_returns_BadRequest()
+    {
+        // Arrange
+        
+        
+        // Act
+        var result = await _authController.LoginWithRefreshToken(0, null);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<BadRequestResult>(result);
+    }
+    
+    [TestMethod]
+    public async Task Loginrefresh_refreshtoken_does_not_exist_returns_Unauthorized_response()
+    {
+        // Arrange
+        var refreshToken = "refresh-token-123";
+        _userRepository.Setup(repo => repo.CheckRefreshToken(refreshToken))
+            .ReturnsAsync("");
+        
+        // Act
+        var result = await _authController.LoginWithRefreshToken(26436234, refreshToken);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<UnauthorizedResult>(result);
+    }
+    
+    [TestMethod]
+    public async Task Loginrefresh_user_does_not_exist_throws_exception()
+    {
+        // Arrange
+        var randomRefreshToken = "random-refresh-token-123";
+        var newRefreshToken = "new-refresh-token-123";
+        var randomUserId = 4;
+        _userRepository.Setup(repo => repo.CheckRefreshToken(randomRefreshToken))
+            .ReturnsAsync(newRefreshToken);
+        _userRepository.Setup(repo => repo.GetUserByUserIdAsync(randomUserId))
+            .ReturnsAsync((User?)null);
+        
+        // Act
+        
+        // Assert
+        await Assert.ThrowsAsync<Exception>(async () =>
+            await _authController.LoginWithRefreshToken(randomUserId,
+                randomRefreshToken));
+    }
+    
 }

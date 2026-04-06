@@ -100,6 +100,11 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetQueriedUsers(string query, int limit, int page)
     {
+        if (limit <= 0 || page <= 0)
+            return BadRequest();
+        if (string.IsNullOrWhiteSpace(query))
+            return BadRequest();
+        
         var result = await userRepository.GetQueriedUsers(query, limit, page);
         if (result == null)
             return Conflict();
@@ -116,9 +121,14 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetUser(int id)
     {
+        if (id <= 0)
+            return BadRequest();
+        
         var result = await userRepository.GetUserByUserIdAsync(id);
         if (result == null)
             return NotFound();
+        result.Password = null;
+        
         return Ok(result);
     }
 

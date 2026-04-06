@@ -120,7 +120,7 @@ public sealed class AuthControllerTest
         LoginRecord? creds = null;
         
         // Act
-        var result = await _authController.TryLogin(creds);
+        var result = await _authController.TryLogin(creds!);
         
         // Assert
         Assert.IsNotNull(result);
@@ -189,7 +189,7 @@ public sealed class AuthControllerTest
         
         
         // Act
-        var result = await _authController.LoginWithRefreshToken(0, null);
+        var result = await _authController.LoginWithRefreshToken(0, null!);
         
         // Assert
         Assert.IsNotNull(result);
@@ -232,4 +232,377 @@ public sealed class AuthControllerTest
                 randomRefreshToken));
     }
     
+    // Create user endpoint tests
+    //
+    //
+    
+    [TestMethod]
+    public async Task Create_returns_OK_object_result()
+    {
+        // Arrange
+        string email = "randomemail";
+        string firstName = "John";
+        string lastName = "Ygdrasil";
+        string password = "randompassword";
+        string phoneNumber = "78945612";
+        var validUser = new User()
+        {
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            Password = password,
+            PhoneNumber = phoneNumber
+        };
+        _userRepository.Setup(repo => repo.CreateUser(validUser))
+            .ReturnsAsync(new User(){UserId = 6, Email = email, FirstName = firstName, LastName = lastName, Password = "placeholder", PhoneNumber = phoneNumber});
+
+        // Act
+        
+        var result = await _authController.CreateUser(validUser);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var okObjectResult = result as OkObjectResult;
+        
+        Assert.AreEqual(200, okObjectResult!.StatusCode);
+        var user = okObjectResult.Value as User;
+        
+        Assert.AreEqual(email, user!.Email);
+        Assert.AreEqual(firstName, user.FirstName);
+        Assert.AreEqual(lastName, user.LastName);
+        Assert.AreEqual(phoneNumber, user.PhoneNumber);
+        
+        // Don't send the users password back to them
+        Assert.AreNotEqual(password, user.Password);
+    }
+    
+    [TestMethod]
+    public async Task Create_returns_Badrequest_on_missing_required_user_properties()
+    {
+        // Arrange
+        string firstName = "John";
+        string lastName = "Ygdrasil";
+        string password = "randompassword";
+        string phoneNumber = "78945612";
+        var invalidUser = new User()
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Password = password,
+            PhoneNumber = phoneNumber
+        };
+        
+        // Act
+        var result = await _authController.CreateUser(invalidUser);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<BadRequestResult>(result);
+        var badRequestResult = result as BadRequestResult;
+        Assert.AreEqual(400, badRequestResult!.StatusCode);
+    }
+    
+    [TestMethod]
+    public async Task Create_returns_Badrequest_on_empty_or_whitespace_strings()
+    {
+        // Arrange
+        string email = "   ";
+        string firstName = "John";
+        string lastName = "   ";
+        string password = "   ";
+        string phoneNumber = "78945612";
+        var invalidUser = new User()
+        {
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            Password = password,
+            PhoneNumber = phoneNumber
+        };
+
+        // Act
+        
+        var result = await _authController.CreateUser(invalidUser);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<BadRequestResult>(result);
+        var badRequestResult = result as BadRequestResult;
+        
+        Assert.AreEqual(400, badRequestResult!.StatusCode);
+    }
+    
+    [TestMethod]
+    public async Task Create_returns_Unauthorized_result_if_user_email_or_phonenumber_already_exists()
+    {
+        // Arrange
+        string email = "randomemail";
+        string firstName = "John";
+        string lastName = "Ygdrasil";
+        string password = "randompassword";
+        string phoneNumber = "78945612";
+        var existingUser = new User()
+        {
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            Password = password,
+            PhoneNumber = phoneNumber
+        };
+        _userRepository.Setup(repo => repo.CreateUser(existingUser))
+            .ReturnsAsync(new User() { UserId = 0 });
+
+        // Act
+        
+        var result = await _authController.CreateUser(existingUser);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<UnauthorizedResult>(result);
+        var unauthorizedResult = result as UnauthorizedResult;
+        Assert.AreEqual(401, unauthorizedResult!.StatusCode);
+    }
+    
+    
+    // Get queried users endpoint tests
+    //
+    //
+
+    [TestMethod]
+    public async Task Queried_users_endpoint_returns_Ok_object_result_on_valid_query()
+    {
+        // Arrange
+        string validQuery = "John Pork Davidson";
+        int page = 1;
+        int pageLimit = 2;
+        _userRepository.Setup(repo => repo.GetQueriedUsers(validQuery, page, pageLimit))
+            .ReturnsAsync(new List<User>()
+            {
+                new User(){UserId = 1, Email = "randomahhemail", FirstName = "John", LastName = "Pork Davidson", PhoneNumber =  "78945612", Password = "placeholder"},
+                new User(){UserId = 2, Email = "randomahhemail2@hotmail.com", FirstName = "John", LastName = "Pork",  PhoneNumber =  "78945612", Password = "placeholder"}
+            });
+
+        // Act
+        var result = await _authController.GetQueriedUsers(validQuery, page, pageLimit);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var okObjectResult = result as OkObjectResult;
+        Assert.AreEqual(200, okObjectResult!.StatusCode);
+        
+        var users = okObjectResult.Value as List<User>;
+        Assert.IsLessThanOrEqualTo(pageLimit, users!.Count);
+        Assert.AreNotEqual(0, users.Count);
+    }
+    
+    [TestMethod]
+    public async Task Queried_users_endpoint_returns_No_content_result_on_no_users()
+    {
+        // Arrange
+        string validQuery = "James May";
+        int page = 1;
+        int pageLimit = 15;
+        _userRepository.Setup(repo => repo.GetQueriedUsers(validQuery, page, pageLimit))
+            .ReturnsAsync(new List<User>());
+
+        // Act
+        var result = await _authController.GetQueriedUsers(validQuery, page, pageLimit);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<NoContentResult>(result);
+    }
+    
+    [TestMethod]
+    public async Task Queried_users_endpoint_returns_Accepted_result_on_fewer_users_than_page_limit()
+    {
+        // Arrange
+        string validQuery = "James May";
+        int page = 1;
+        int pageLimit = 15;
+        _userRepository.Setup(repo => repo.GetQueriedUsers(validQuery, page, pageLimit))
+            .ReturnsAsync(new List<User>()
+            {
+                new User(){Email = "jm@topgun.uk", UserId = 782, LastName = "May", FirstName = "James", Password = "placeholder", PhoneNumber = "78546666"}
+            });
+
+        // Act
+        var result = await _authController.GetQueriedUsers(validQuery, page, pageLimit);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<AcceptedResult>(result);
+        var acceptedResult = result as AcceptedResult;
+
+        Assert.IsNotNull(acceptedResult);
+        Assert.AreEqual(202, acceptedResult.StatusCode);
+        var users = acceptedResult.Value as List<User>;
+        
+        Assert.IsNotNull(users);
+        Assert.IsLessThan(pageLimit, users.Count);
+        Assert.AreNotEqual(0, users.Count);
+    }
+    
+    [TestMethod]
+    public async Task Queried_users_endpoint_returns_Badrequest_on_page_or_pageLimit_lessThan_or_equal_zero()
+    {
+        // Arrange
+        string validQuery = "James May";
+        int page = 0;
+        int pageLimit = 0;
+
+        int negativePage = -978;
+        int negativepageLimit = -15;
+
+        // Act
+        var result = await _authController.GetQueriedUsers(validQuery, page, pageLimit);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<BadRequestResult>(result);
+        var badRequestResult = result as BadRequestResult;
+        Assert.IsNotNull(badRequestResult);
+        Assert.AreEqual(400, badRequestResult.StatusCode);
+    }
+    
+    [TestMethod]
+    public async Task Queried_users_endpoint_returns_Badrequest_on_missing_or_empty_query_parameter()
+    {
+        // Arrange
+        string invalidQuery = "    ";
+        string invalidQuery2 = "";
+        int page = 1;
+        int pageLimit = 15;
+
+        // Act
+        var result = await _authController.GetQueriedUsers(invalidQuery, page, pageLimit);
+        var result2 = await _authController.GetQueriedUsers(invalidQuery2, page, pageLimit);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsNotNull(result2);
+        Assert.IsInstanceOfType<BadRequestResult>(result);
+        Assert.IsInstanceOfType<BadRequestResult>(result2);
+        var badRequestResult = result as BadRequestResult;
+        var badRequestResult2 = result2 as BadRequestResult;
+        Assert.IsNotNull(badRequestResult);
+        Assert.AreEqual(400, badRequestResult.StatusCode);
+        Assert.IsNotNull(badRequestResult2);
+        Assert.AreEqual(400, badRequestResult2.StatusCode);
+        
+    }
+    
+    [TestMethod]
+    public async Task Queried_users_endpoint_returns_Conflict_on_server_down()
+    {
+        // Arrange
+        string validQuery = "John Pork Davidson";
+        int page = 1;
+        int pageLimit = 2;
+        _userRepository.Setup(repo => repo.GetQueriedUsers(validQuery, page, pageLimit))
+            .ReturnsAsync((List<User>)null!);
+
+        // Act
+        var result = await _authController.GetQueriedUsers(validQuery, page, pageLimit);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<ConflictResult>(result);
+        var conflictResult = result as ConflictResult;
+        Assert.IsNotNull(conflictResult);
+        Assert.AreEqual(409, conflictResult.StatusCode);
+        
+    }
+    
+    // Get user by id endpoint tests
+    //
+    //
+    
+    [TestMethod]
+    public async Task Get_user_by_id_returns_OK_object_result()
+    {
+        // Arrange
+        var userId = 46;
+        _userRepository.Setup(repo => repo.GetUserByUserIdAsync(userId))
+            .ReturnsAsync(new User(){UserId = userId, FirstName = "Brian", LastName = "Hugney", Email = "hugney@something.com", Password = "Placeholder", PhoneNumber = "78964655"});
+        
+        // Act
+        var result = await _authController.GetUser(userId);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var okObjectResult = result as OkObjectResult;
+        
+        Assert.IsNotNull(okObjectResult);
+        Assert.AreEqual(200, okObjectResult.StatusCode);
+        var user = okObjectResult.Value as User;
+        Assert.IsNotNull(user);
+        Assert.AreEqual(userId, user.UserId);
+    }
+    
+    [TestMethod]
+    public async Task Get_user_by_id_returns_BadRequest_with_negative_or_zero_id()
+    {
+        // Arrange
+        var negativeId = -1;
+        var zeroUserId = 0;
+        
+        // Act
+        var negativeResult = await _authController.GetUser(negativeId);
+        var zeroResult = await _authController.GetUser(zeroUserId);
+        
+        // Assert
+        Assert.IsNotNull(zeroResult);
+        Assert.IsNotNull(negativeResult);
+        Assert.IsInstanceOfType<BadRequestResult>(zeroResult);
+        Assert.IsInstanceOfType<BadRequestResult>(negativeResult);
+        
+        var negativeObjectResult = negativeResult as BadRequestResult;
+        var zeroObjectResult = zeroResult as BadRequestResult;
+        Assert.IsNotNull(negativeObjectResult);
+        Assert.IsNotNull(zeroObjectResult);
+        Assert.AreEqual(400, negativeObjectResult.StatusCode);
+        Assert.AreEqual(400, zeroObjectResult.StatusCode);
+    }
+    
+    [TestMethod]
+    public async Task Get_user_by_id_does_NOT_return_user_password_or_db_password()
+    {
+        // Arrange
+        var userId = 785;
+        _userRepository.Setup(repo => repo.GetUserByUserIdAsync(userId))
+            .ReturnsAsync(new User(){UserId = userId, Password = "Placeholder", PhoneNumber = "78964655", FirstName = "Megan", LastName = "Fox", Email = "meg@gmail.com"});
+        
+        // Act
+        var result = await _authController.GetUser(userId);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<OkObjectResult>(result);
+        var okObjectResult = result as OkObjectResult;
+        Assert.IsNotNull(okObjectResult);
+        Assert.AreEqual(200, okObjectResult.StatusCode);
+        var user = okObjectResult.Value as User;
+        
+        Assert.IsNull(user!.Password);
+    }
+    
+    [TestMethod]
+    public async Task Get_user_by_id_returns_NotFound_result_when_user_not_existing()
+    {
+        // Arrange
+        var nonExistingUserId = 8654;
+        _userRepository.Setup(repo => repo.GetUserByUserIdAsync(nonExistingUserId))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _authController.GetUser(nonExistingUserId);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<NotFoundResult>(result);
+    }
 }

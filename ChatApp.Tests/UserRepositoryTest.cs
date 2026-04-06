@@ -1,7 +1,7 @@
 ﻿namespace ChatApp.Tests;
 
 [TestClass]
-public sealed class RepositoryTest
+public sealed class UserRepositoryTest
 {
     [TestInitialize]
     public void Initialize_Tests()

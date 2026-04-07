@@ -605,4 +605,53 @@ public sealed class AuthControllerTest
         Assert.IsNotNull(result);
         Assert.IsInstanceOfType<NotFoundResult>(result);
     }
+    
+    // Update user endpoint tests
+    //
+    //
+    
+    [TestMethod]
+    public async Task Update_user_returns_OK_result()
+    {
+        // Arrange
+        var userId = 78642;
+        var newUser = new ProfileUser()
+        {
+            FirstName = "Brian",
+            LastName = "Hugney",
+            Email = "brian@email.com",
+            PhoneNumber = "84576215",
+            UserId = userId,
+        };
+        _userRepository.Setup(repo => repo.UpdateUser(newUser))
+            .ReturnsAsync(userId);
+        
+        // Act
+        // TODO change to use JWT token
+        _authController.HttpContext.Request.Headers["Authorization"] = "Bearer " + newUser.UserId;
+        var result = await _authController.UpdateUser(newUser);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<OkResult>(result);
+    }
+    
+    [TestMethod]
+    public async Task Update_user_returns_unauthorized_result_when_updating_other_user()
+    {
+        // Arrange
+        var newUser = new ProfileUser()
+        {
+            FirstName = "Brian",
+            LastName = "Hugney",
+            Email = "brian@email.com",
+            PhoneNumber = "84576215",
+            UserId = 78642,
+        };
+
+        // Act
+
+        // Assert
+
+    }
 }

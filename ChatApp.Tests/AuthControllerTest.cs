@@ -4,8 +4,11 @@ using ChatAppAPI.Repositories.Interfaces;
 using ChatAppAPI.Token;
 using Core;
 using Core.DTOs;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Primitives;
+using Microsoft.IdentityModel.Tokens;
 using Range = Moq.Range;
 
 namespace ChatApp.Tests;
@@ -15,6 +18,7 @@ public sealed class AuthControllerTest
 {
     private Mock<IUserRepository> _userRepository;
     private AuthController _authController;
+    private TokenProvider _tokenProvider;
     
     [TestInitialize]
     public void Initialize_Tests()
@@ -33,9 +37,15 @@ public sealed class AuthControllerTest
 
         Environment.SetEnvironmentVariable("JWT_SECRET", "randomassvariablefortestingpurposesonly1521/%(%&¤#&#())/%%¤%&#");
         
+        _tokenProvider = new TokenProvider(configRoot);
+        
         _userRepository = new Mock<IUserRepository>();
 
-        _authController = new AuthController(_userRepository.Object, new TokenProvider(configRoot));
+        _authController = new AuthController(_userRepository.Object, _tokenProvider);
+        _authController.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
     }
     
     // Login endpoint tests
@@ -615,21 +625,33 @@ public sealed class AuthControllerTest
     {
         // Arrange
         var userId = 78642;
-        var newUser = new ProfileUser()
+        var firstName = "Brian";
+        var lastName = "Hugney";
+        var email = "brian@email.com";
+        var phoneNumber = "78964655";
+        var userForToken = new User()
         {
-            FirstName = "Brian",
-            LastName = "Hugney",
-            Email = "brian@email.com",
-            PhoneNumber = "84576215",
+            FirstName = firstName,
+            LastName = lastName,
+            Email = email,
+            PhoneNumber = phoneNumber,
             UserId = userId,
         };
-        _userRepository.Setup(repo => repo.UpdateUser(newUser))
-            .ReturnsAsync(userId);
+        var updatedUser = new ProfileUser()
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = "newEmailBrian@gmail.eu",
+            PhoneNumber = phoneNumber,
+            UserId = userId,
+        };
+        _userRepository.Setup(repo => repo.UpdateUser(updatedUser))
+            .ReturnsAsync(1);
+        var token = _tokenProvider.Create(userForToken);
         
         // Act
-        // TODO change to use JWT token
-        _authController.HttpContext.Request.Headers["Authorization"] = "Bearer " + newUser.UserId;
-        var result = await _authController.UpdateUser(newUser);
+        _authController.HttpContext.Request.Headers["Authorization"] = "Bearer " + token;
+        var result = await _authController.UpdateUser(updatedUser);
 
         // Assert
         Assert.IsNotNull(result);
@@ -637,21 +659,146 @@ public sealed class AuthControllerTest
     }
     
     [TestMethod]
-    public async Task Update_user_returns_unauthorized_result_when_updating_other_user()
+    public async Task Update_user_returns_unauthorized_result_when_mismatch_between_JWT_and_updated_user()
     {
         // Arrange
-        var newUser = new ProfileUser()
+        var userId = 78642;
+        var firstName = "Brian";
+        var lastName = "Hugney";
+        var email = "brian@email.com";
+        var phoneNumber = "78964655";
+        // Other persons token
+        var userForToken = new User()
         {
-            FirstName = "Brian",
-            LastName = "Hugney",
-            Email = "brian@email.com",
-            PhoneNumber = "84576215",
-            UserId = 78642,
+            FirstName = "Jill",
+            LastName = "Smith",
+            Email = "hr@gg.com",
+            PhoneNumber = "11111111",
+            UserId = 789864,
+        };
+        var updatedUser = new ProfileUser()
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = "newEmailBrian@gmail.eu",
+            PhoneNumber = phoneNumber,
+            UserId = userId,
+        };
+        var token = _tokenProvider.Create(userForToken);
+
+        // Act
+        _authController.HttpContext.Request.Headers["Authorization"] = "Bearer " + token;
+        var result = await _authController.UpdateUser(updatedUser);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<UnauthorizedResult>(result);
+    }
+    
+    [TestMethod]
+    public async Task Update_user_returns_badrequest_result_when_missing_JWT()
+    {
+        // Arrange
+        var userId = 78642;
+        var firstName = "Brian";
+        var lastName = "Hugney";
+        var email = "brian@email.com";
+        var phoneNumber = "78964655";
+        var updatedUser = new ProfileUser()
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = "newEmailBrian@gmail.eu",
+            PhoneNumber = phoneNumber,
+            UserId = userId,
+        };
+        
+        // Act
+        _authController.HttpContext.Request.Headers["Authorization"] = "";
+        var result = await _authController.UpdateUser(updatedUser);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<BadRequestResult>(result);
+    }
+    
+    [TestMethod]
+    public async Task Update_user_throws_SecurityTokeMalformedException_with_malformed_JWT()
+    {
+        // Arrange
+        var userId = 78642;
+        var firstName = "Brian";
+        var lastName = "Hugney";
+        var email = "brian@email.com";
+        var phoneNumber = "78964655";
+        var userForToken = new User()
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = email,
+            PhoneNumber = phoneNumber,
+            UserId = userId,
+        };
+        var updatedUser = new ProfileUser()
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = "newEmailBrian@gmail.eu",
+            PhoneNumber = phoneNumber,
+            UserId = userId,
         };
 
         // Act
-
+        _authController.HttpContext.Request.Headers["Authorization"] = "Bearer " + "randomtokenstuffhahanotworkingrighthihi";
+        
         // Assert
+        await Assert.ThrowsAsync<SecurityTokenMalformedException>(async () => await _authController.UpdateUser(updatedUser));
+    }
+    
+    [TestMethod]
+    public async Task Update_user_returns_conflict_result_when_updating_phonenumber_or_email_to_already_existing_user_phonenumber_or_email()
+    {
+        // Arrange
+        var UserId = 764;
+        var firstName = "DoesNot";
+        var lastName = "Matter";
+        var currentPhonenumber = "54621358";
+        var currentEmail = "hello@gmail.dk";
+        var password = "password";
+        
+        var existingPhoneNumber = "12345678";
+        var existingEmail = "iexist@gmail.com";
 
+        var userForToken = new User()
+        {
+            UserId = UserId,
+            FirstName = firstName,
+            LastName = lastName,
+            Email = currentEmail,
+            PhoneNumber = currentPhonenumber,
+            Password = password
+        };
+
+        var updatedUser = new ProfileUser()
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Email = existingEmail,
+            PhoneNumber = existingPhoneNumber,
+            UserId = UserId,
+        };
+        
+        var token = _tokenProvider.Create(userForToken);
+
+        _userRepository.Setup(repo => repo.UpdateUser(updatedUser))
+            .ReturnsAsync(0);
+        
+        // Act
+        _authController.HttpContext.Request.Headers["Authorization"] = "Bearer " + token;
+        var result = await _authController.UpdateUser(updatedUser);
+        
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType<ConflictResult>(result);
     }
 }

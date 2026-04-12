@@ -530,10 +530,29 @@ public sealed class UserRepositoryTests
     public async Task GetUserByUserIdAsync_returns_existing_user()
     {
         // Arrange
+        var userId = 1;
+        var firstName = "Drake";
+        var lastName = "McLoving";
+        var email = "drake@drake.com";
+        var password = "drake";
+        var phoneNumber = "123456789";
+        var currentUser = new User()
+        {
+            UserId = userId, FirstName = firstName, LastName = lastName, Email = email, Password = password,
+            PhoneNumber = phoneNumber
+        };
+        await _userRepository.CreateUser(currentUser);
         
         // Act
+        var result = await _userRepository.GetUserByUserIdAsync(userId);
         
         // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType(result, typeof(User));
+        Assert.AreEqual(userId, result.UserId);
+        Assert.AreEqual(firstName, result.FirstName);
+        Assert.AreEqual(lastName, result.LastName);
+        Assert.AreEqual(email, result.Email);
     }
     
     [TestMethod]
@@ -541,19 +560,42 @@ public sealed class UserRepositoryTests
     {
         // Arrange
         
+        
         // Act
+        var result = await _userRepository.GetUserByUserIdAsync(1);
         
         // Assert
+        Assert.IsNull(result);
     }
     
     [TestMethod]
     public async Task GetUserByUserIdAsync_returns_existing_user_excluded_password()
     {
         // Arrange
-        
+        var userId = 1;
+        var firstName = "Drake";
+        var lastName = "McLoving";
+        var email = "drake@drake.com";
+        var password = "drake";
+        var phoneNumber = "123456789";
+        var currentUser = new User()
+        {
+            UserId = userId, FirstName = firstName, LastName = lastName, Email = email, Password = password,
+            PhoneNumber = phoneNumber
+        };
+        await _userRepository.CreateUser(currentUser);
+    
         // Act
-        
+        var result = await _userRepository.GetUserByUserIdAsync(userId);
+    
         // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType(result, typeof(User));
+        Assert.AreEqual(userId, result.UserId);
+        Assert.AreEqual(firstName, result.FirstName);
+        Assert.AreEqual(lastName, result.LastName);
+        Assert.AreEqual(email, result.Email);
+        Assert.IsNull(result.Password);
     }
     
     // GetUsersForConversationByUserIdAsync tests
@@ -564,10 +606,53 @@ public sealed class UserRepositoryTests
     public async Task GetUsersForConversationByUserIdAsync_returns_all_users()
     {
         // Arrange
+        var user1 = new User()
+        {
+            UserId = 1,
+            FirstName = "Morten",
+            LastName = "Frederiksen",
+            Email = "morten@gmail.com",
+            Password = "morten",
+            PhoneNumber = "79846213"
+        };
+        var user2 = new User()
+        {
+            UserId = 2,
+            FirstName = "Yggdrasil",
+            LastName = "Hjalmar",
+            Email = "ygg@hotmail.com",
+            Password = "ygg",
+            PhoneNumber = "54862318"
+        };
+        var user3 = new User()
+        {
+            UserId = 3,
+            FirstName = "Emil",
+            LastName = "Mortensen",
+            Email = "em@gmail.com",
+            Password = "em123456789",
+            PhoneNumber = "78994320156"
+        };
+        await _userRepository.CreateUser(user1);
+        await _userRepository.CreateUser(user2);
+        await _userRepository.CreateUser(user3);
         
+        List<int> ids = new List<int>(){1,2,3};
+
         // Act
-        
+        var result = await _userRepository.GetUsersForConversationByUserIdAsync(ids);
+
         // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType(result, typeof(List<User>));
+        Assert.HasCount(3, result);
+        foreach (var user in result)
+        {
+            Console.WriteLine($"{user.UserId}: {user.FirstName} {user.LastName} {user.Email}");
+        }
+        Assert.AreEqual("Morten", result[0].FirstName);
+        Assert.AreEqual("Yggdrasil", result[1].FirstName);
+        Assert.AreEqual("Emil", result[2].FirstName);
     }
     
     [TestMethod]

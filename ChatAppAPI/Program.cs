@@ -78,6 +78,15 @@ builder.Services.AddScoped<BlobServiceClient>(sp =>
     
 });
 
+builder.Services.AddScoped<BlobContainerClient>(sp =>
+{
+    var serviceClient = sp.GetRequiredService<BlobServiceClient>();
+    var containerName = "chatapp";
+    if (string.IsNullOrWhiteSpace(containerName))
+        throw new InvalidOperationException("AZURE_BLOB_CONTAINER_NAME_environment variable is not set");
+    return serviceClient.GetBlobContainerClient(containerName);
+});
+
 builder.Services.AddScoped<IMessagesRepository, MessageRepositoryMongoDb>();
 builder.Services.AddScoped<IConversationRepository, ConversationRepositoryMongoDb>();
 builder.Services.AddSingleton<TokenProvider>();

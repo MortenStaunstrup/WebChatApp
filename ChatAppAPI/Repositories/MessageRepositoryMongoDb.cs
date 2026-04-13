@@ -17,15 +17,15 @@ namespace ChatAppAPI.Repositories;
 public class MessageRepositoryMongoDb : IMessagesRepository
 {
     private readonly IMongoCollection<Message> _messagesCollection;
-    private readonly BlobServiceClient _blobStorageClient;
+    private readonly BlobContainerClient _containerClient;
 
     public MessageRepositoryMongoDb(
         IMongoDatabase mongoDatabase,
-        BlobServiceClient blobStorageClient
+        BlobContainerClient containerClient
         )
     {
         _messagesCollection = mongoDatabase.GetCollection<Message>("Messages");
-        _blobStorageClient = blobStorageClient;
+        _containerClient = containerClient;
     }
     
     
@@ -51,13 +51,12 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         
     }
 
-    public async Task<string> UploadFile(string fileName, int senderId, byte[] file)
+    public async Task<string> UploadFile(string fileName, byte[] file)
     {
         try
         {
-            BlobContainerClient containerClient = _blobStorageClient.GetBlobContainerClient("chatapp");
             string blobName = fileName + Guid.NewGuid();
-            BlobClient blobClient = containerClient.GetBlobClient(blobName);
+            BlobClient blobClient = _containerClient.GetBlobClient(blobName);
 
             var binData = BinaryData.FromBytes(file);
 
@@ -78,8 +77,7 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         if (message == null)
             return null;
         
-        BlobContainerClient containerClient = _blobStorageClient.GetBlobContainerClient("chatapp");
-        BlobClient blobClient = containerClient.GetBlobClient(message.FileURL);
+        BlobClient blobClient = _containerClient.GetBlobClient(message.FileURL);
 
         var download = await blobClient.DownloadAsync();
         if (download.HasValue)

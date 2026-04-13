@@ -105,7 +105,7 @@ public class MessagesController : ControllerBase
           if (authId != container.SenderId)
                return Unauthorized();
           
-          var result = await _messagesRepository.UploadFile(container.FileName, container.SenderId, container.File);
+          var result = await _messagesRepository.UploadFile(container.FileName, container.File);
           if (!string.IsNullOrWhiteSpace(result))
                return Ok(result);
           return BadRequest();

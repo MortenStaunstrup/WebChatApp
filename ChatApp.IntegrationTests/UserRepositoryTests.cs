@@ -656,23 +656,63 @@ public sealed class UserRepositoryTests
     }
     
     [TestMethod]
-    public async Task GetUsersForConversationByUserIdAsync_returns_all_users_but_invalid_userId()
-    {
-        // Arrange
-        
-        // Act
-        
-        // Assert
-    }
-    
-    [TestMethod]
     public async Task GetUsersForConversationByUserIdAsync_returns_all_users_excluding_password_phonenumber_email()
     {
         // Arrange
+        var user1 = new User()
+        {
+            UserId = 1,
+            FirstName = "Morten",
+            LastName = "Frederiksen",
+            Email = "morten@gmail.com",
+            Password = "morten",
+            PhoneNumber = "79846213"
+        };
+        var user2 = new User()
+        {
+            UserId = 2,
+            FirstName = "Yggdrasil",
+            LastName = "Hjalmar",
+            Email = "ygg@hotmail.com",
+            Password = "ygg",
+            PhoneNumber = "54862318"
+        };
+        var user3 = new User()
+        {
+            UserId = 3,
+            FirstName = "Emil",
+            LastName = "Mortensen",
+            Email = "em@gmail.com",
+            Password = "em123456789",
+            PhoneNumber = "78994320156"
+        };
+        await _userRepository.CreateUser(user1);
+        await _userRepository.CreateUser(user2);
+        await _userRepository.CreateUser(user3);
         
+        List<int> ids = new List<int>(){1,2,3};
+
         // Act
-        
+        var result = await _userRepository.GetUsersForConversationByUserIdAsync(ids);
+
         // Assert
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOfType(result, typeof(List<User>));
+        Assert.HasCount(3, result);
+        
+        Assert.AreEqual("Morten", result[0].FirstName);
+        Assert.AreEqual("Yggdrasil", result[1].FirstName);
+        Assert.AreEqual("Emil", result[2].FirstName);
+        
+        Assert.IsNull(result[0].Email);
+        Assert.IsNull(result[1].Email);
+        Assert.IsNull(result[2].Email);
+        Assert.IsNull(result[0].Password);
+        Assert.IsNull(result[1].Password);
+        Assert.IsNull(result[2].Password);
+        Assert.IsNull(result[0].PhoneNumber);
+        Assert.IsNull(result[1].PhoneNumber);
+        Assert.IsNull(result[2].PhoneNumber);
     }
     
     // UpdateUser tests

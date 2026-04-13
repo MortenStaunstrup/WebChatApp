@@ -16,26 +16,16 @@ namespace ChatAppAPI.Repositories;
 
 public class MessageRepositoryMongoDb : IMessagesRepository
 {
-    private readonly string _connectionString;
-    private readonly IMongoClient  _mongoClient;
-    private readonly IMongoDatabase _mongoDatabase;
     private readonly IMongoCollection<Message> _messagesCollection;
     private readonly BlobServiceClient _blobStorageClient;
 
-    public MessageRepositoryMongoDb()
+    public MessageRepositoryMongoDb(
+        IMongoDatabase mongoDatabase,
+        BlobServiceClient blobStorageClient
+        )
     {
-        _connectionString = Environment.GetEnvironmentVariable("MONGO_CONNECTION_STRING");
-        if (string.IsNullOrEmpty(_connectionString))
-        {
-            throw new ConnectionAbortedException("No connection string set");
-        }
-        _mongoClient = new MongoClient(_connectionString);
-        _mongoDatabase = _mongoClient.GetDatabase("ChatApp");
-        _messagesCollection = _mongoDatabase.GetCollection<Message>("Messages");
-        _blobStorageClient = new BlobServiceClient(
-            new Uri(Environment.GetEnvironmentVariable("AZURE_BLOBS_STORAGE_CONNECTION_STRING")),
-            new StorageSharedKeyCredential(Environment.GetEnvironmentVariable("AZURE_FILESTORAGE_NAME"), Environment.GetEnvironmentVariable("AZURE_FILESTORAGE_KEY"))
-            );
+        _messagesCollection = mongoDatabase.GetCollection<Message>("Messages");
+        _blobStorageClient = blobStorageClient;
     }
     
     

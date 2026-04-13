@@ -6,18 +6,14 @@ namespace ChatAppAPI.Repositories;
 
 public class ConversationRepositoryMongoDb : IConversationRepository
 {
-    private readonly string _connectionString;
-    private readonly IMongoClient _mongoClient;
-    private readonly IMongoDatabase _mongoDatabase;
     private readonly IMongoCollection<Conversation> _conversations;
 
 
-    public ConversationRepositoryMongoDb()
+    public ConversationRepositoryMongoDb(
+        IMongoDatabase mongoDatabase
+        )
     {
-        _connectionString = Environment.GetEnvironmentVariable("MONGO_CONNECTION_STRING");
-        _mongoClient = new MongoClient(_connectionString);
-        _mongoDatabase = _mongoClient.GetDatabase("ChatApp");
-        _conversations = _mongoDatabase.GetCollection<Conversation>("Conversations");
+        _conversations = mongoDatabase.GetCollection<Conversation>("Conversations");
     }
 
 

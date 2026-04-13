@@ -9,9 +9,9 @@ using Moq;
 namespace ChatApp.IntegrationTests;
 
 [TestClass]
-public sealed class UserRepositoryTests
+public sealed class UserRepositoryMongoDBTests
 {
-    private TokenProvider _tokenProvider;
+    private TokenProvider _tokenProvider = null!;
     
     private IMongoClient _mongoClient = null!;
     private IMongoDatabase _database = null!;

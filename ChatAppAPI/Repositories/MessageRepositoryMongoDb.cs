@@ -79,22 +79,29 @@ public class MessageRepositoryMongoDb : IMessagesRepository
         
         BlobClient blobClient = _containerClient.GetBlobClient(message.FileURL);
 
-        var download = await blobClient.DownloadAsync();
-        if (download.HasValue)
+        try
         {
-            using (var ms = new MemoryStream())
+            var download = await blobClient.DownloadAsync();
+            if (download.HasValue)
             {
-                await download.Value.Content.CopyToAsync(ms);
-                
-                return new ByteNameContainer()
+                using (var ms = new MemoryStream())
                 {
-                    FileName = message.Content,
-                    Bytes = ms.ToArray()
-                };
+                    await download.Value.Content.CopyToAsync(ms);
+                    
+                    return new ByteNameContainer()
+                    {
+                        FileName = message.Content,
+                        Bytes = ms.ToArray()
+                    };
+                }
             }
+            return null;
         }
-
-        return null;
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return null;;
+        }
     }
 
     /*

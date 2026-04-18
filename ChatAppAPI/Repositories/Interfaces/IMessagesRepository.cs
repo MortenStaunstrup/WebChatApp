@@ -9,6 +9,6 @@ public interface IMessagesRepository
     Task<int> SendMessage(Message message);
     Task<Message?> GetSentMessage(int messageId);
     Task<bool> UpdateSeenStatus(List<Message> messages);
-    Task<string> UploadFile(string fileName, int senderId, byte[] file);
+    Task<string> UploadFile(string fileName, byte[] file);
     Task<ByteNameContainer?> DownloadFile(int messageId);
 }

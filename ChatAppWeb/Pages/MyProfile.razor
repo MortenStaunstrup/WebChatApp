@@ -120,9 +120,9 @@
         switch (response.StatusCode)
         {
             case HttpStatusCode.OK:
-                var result = await response.Content.ReadFromJsonAsync<UserTokenDTO>();
+                var result = await response.Content.ReadFromJsonAsync<TokensDto>();
                 if (result == null)
-                    throw new ApplicationException("UserTokenDTO is null");
+                    throw new ApplicationException("TokensDTO is null");
                 await UpdateRefreshTokenAndJwt(result.RefreshToken, result.Token);
                 return true;
                 break;

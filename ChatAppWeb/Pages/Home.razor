@@ -17,6 +17,7 @@
     0.1 Implement RATE LIMITING on API
     1. Implement logging system (maybe NLog, Loki and Grafana?) (Maybe an Azure solution??)
     1.5 Create unit tests
+    2. Feature to update password, AND 'Forgot password' feature
     3. Make UI prettier (probably never going to happen)
     5. Front page has weird height of nothing above it self
 -->
@@ -373,9 +374,9 @@ else if (loaded)
         switch (response.StatusCode)
         {
             case HttpStatusCode.OK:
-                var result = await response.Content.ReadFromJsonAsync<UserTokenDTO>();
+                var result = await response.Content.ReadFromJsonAsync<TokensDto>();
                 if (result == null)
-                    throw new ApplicationException("UserTokenDTO is null");
+                    throw new ApplicationException("TokensDTO is null");
                 await UpdateRefreshTokenAndJwt(result.RefreshToken, result.Token);
                 return true;
                 break;

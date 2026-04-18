@@ -36,6 +36,8 @@ public class AuthController : ControllerBase
     [Route("login")]
     public async Task<IActionResult> TryLogin([FromBody] LoginRecord loginCredentials)
     {
+        if (loginCredentials == null)
+            return BadRequest();
         var result = await userRepository.TryLogin(loginCredentials.EmailOrPhone, loginCredentials.Password);
         if (result == null)
             return BadRequest("Server down");
@@ -64,6 +66,9 @@ public class AuthController : ControllerBase
     [Route("loginrefresh/{userId:int}")]
     public async Task<IActionResult> LoginWithRefreshToken(int userId, [FromHeader(Name = "RefreshToken")] string refreshToken)
     {
+        if (userId <= 0 || string.IsNullOrWhiteSpace(refreshToken))
+            return BadRequest();
+        
         var res = await userRepository.CheckRefreshToken(refreshToken);
         if (res == null || string.IsNullOrWhiteSpace(res))
             return Unauthorized();
@@ -74,12 +79,7 @@ public class AuthController : ControllerBase
         
         var newRefreshToken = await userRepository.CreateRefreshToken(userId);
         string token = _tokenProvider.Create(user);
-        var dto = new UserTokenDTO()
-        {
-            User = user,
-            Token = token,
-            RefreshToken = newRefreshToken
-        };
+        var dto = new TokensDto(token, newRefreshToken);
         return Ok(dto);
     }
 
@@ -100,6 +100,11 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetQueriedUsers(string query, int limit, int page)
     {
+        if (limit <= 0 || page <= 0)
+            return BadRequest();
+        if (string.IsNullOrWhiteSpace(query))
+            return BadRequest();
+        
         var result = await userRepository.GetQueriedUsers(query, limit, page);
         if (result == null)
             return Conflict();
@@ -116,9 +121,14 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetUser(int id)
     {
+        if (id <= 0)
+            return BadRequest();
+        
         var result = await userRepository.GetUserByUserIdAsync(id);
         if (result == null)
             return NotFound();
+        result.Password = null;
+        
         return Ok(result);
     }
 

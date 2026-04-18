@@ -11,27 +11,21 @@ namespace ChatAppAPI.Repositories;
 
 public class UserRepositoryMongoDb : IUserRepository
 {
-    private readonly string _connectionString;
-    private readonly IMongoClient _mongoClient;
-    private readonly IMongoDatabase _mongoDatabase;
     private readonly IMongoCollection<User> _userCollection;
     private readonly IMongoCollection<RefreshToken> _refreshTokenCollection;
-    TokenProvider _tokenProvider;
-    private readonly int refreshTokenExpirationTimeInDays;
+    private readonly TokenProvider _tokenProvider;
+    private readonly int _refreshTokenExpirationTimeInDays;
 
-    public UserRepositoryMongoDb(TokenProvider tokenProvider, IConfiguration configuration)
+    public UserRepositoryMongoDb(
+        TokenProvider tokenProvider,
+        IMongoDatabase mongoDatabase,
+        IConfiguration configuration)
     {
-        _connectionString = Environment.GetEnvironmentVariable("MONGO_CONNECTION_STRING");
-        if (string.IsNullOrEmpty(_connectionString))
-        {
-            throw new ConnectionAbortedException("No connection string set");
-        }
-        _mongoClient = new MongoClient(_connectionString);
-        _mongoDatabase = _mongoClient.GetDatabase("ChatApp");
-        _userCollection = _mongoDatabase.GetCollection<User>("Users");
-        _refreshTokenCollection = _mongoDatabase.GetCollection<RefreshToken>("RefreshTokens");
         _tokenProvider = tokenProvider;
-        refreshTokenExpirationTimeInDays = configuration.GetValue<int>("Jwt:RefreshTokenExpirationInDays");
+        _refreshTokenExpirationTimeInDays = configuration.GetValue<int>("Jwt:RefreshTokenExpirationInDays");
+
+        _userCollection = mongoDatabase.GetCollection<User>("Users");
+        _refreshTokenCollection = mongoDatabase.GetCollection<RefreshToken>("RefreshTokens");
     }
 
     // Called from LoginWithRefreshToken endpoint
@@ -62,7 +56,7 @@ public class UserRepositoryMongoDb : IUserRepository
                     Token = token,
                     Id = userToken.Id,
                     UserId = userId,
-                    ExpiresOnUTC = DateTime.UtcNow.AddDays(refreshTokenExpirationTimeInDays)
+                    ExpiresOnUTC = DateTime.UtcNow.AddDays(_refreshTokenExpirationTimeInDays)
                 };
                 await _refreshTokenCollection.ReplaceOneAsync(r => r.Id == savedToken.Id, savedToken);
                 return token;
@@ -83,7 +77,7 @@ public class UserRepositoryMongoDb : IUserRepository
                 Token = token,
                 Id = newId,
                 UserId = userId,
-                ExpiresOnUTC = DateTime.UtcNow.AddDays(refreshTokenExpirationTimeInDays)
+                ExpiresOnUTC = DateTime.UtcNow.AddDays(_refreshTokenExpirationTimeInDays)
             };
             await _refreshTokenCollection.InsertOneAsync(savedToken);
             return token;

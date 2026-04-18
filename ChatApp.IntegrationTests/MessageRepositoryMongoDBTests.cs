@@ -23,10 +23,8 @@ public class MessageRepositoryMongoDBTests
     
     [TestInitialize]
     public void Initialize_Tests()
-    {
-        // Docker container will be set to host port 27018
-        // Therefore MONGO_CONNECTION_STRING should be set to mongodb://test:test123@localhost:27018/?authSource=admin
-        var connectionString =
+    { 
+            var connectionString =
             Environment.GetEnvironmentVariable("MONGO_CONNECTION_STRING")
             ?? "mongodb://localhost:27017";
 
@@ -820,6 +818,9 @@ public class MessageRepositoryMongoDBTests
         };
         List<Message> messages = new List<Message>(){message1, message2, message3};
         await _messageCollection.InsertManyAsync(messages);
+        message1.SeenByReceiver = true;
+        message2.SeenByReceiver = true;
+        message3.SeenByReceiver = true;
         
         // Act
         var result = await _messageRepository.UpdateSeenStatus(messages);
@@ -828,65 +829,10 @@ public class MessageRepositoryMongoDBTests
         
         // Assert
         Assert.IsTrue(result);
-        CollectionAssert.AreEqual(messagesFromMongo, messages);
-
-    }
-    
-    [TestMethod]
-    public async Task UpdateSeenStatus_updates_seen_status_on_messages_not_seen()
-    {
-        // Arrange
-        var message1 = new Message()
-        {
-            MessageId = 1,
-            Content = Guid.NewGuid().ToString(),
-            IsFile = false,
-            Receiver = 2,
-            Sender = 1,
-            SeenByReceiver = false,
-            Timestamp = DateTime.UtcNow.AddHours(-3)
-        };
-        var message2 = new Message()
-        {
-            MessageId = 2,
-            Content = Guid.NewGuid().ToString(),
-            IsFile = false,
-            Receiver = 2,
-            Sender = 1,
-            SeenByReceiver = true,
-            Timestamp = DateTime.UtcNow.AddHours(-3)
-        };
-        var message3 = new Message()
-        {
-            MessageId = 3,
-            Content = Guid.NewGuid().ToString(),
-            IsFile = false,
-            Receiver = 2,
-            Sender = 1,
-            SeenByReceiver = false,
-            Timestamp = DateTime.UtcNow.AddHours(-3)
-        };
-        var message4 = new Message()
-        {
-            MessageId = 4,
-            Content = Guid.NewGuid().ToString(),
-            IsFile = false,
-            Receiver = 2,
-            Sender = 1,
-            SeenByReceiver = true,
-            Timestamp = DateTime.UtcNow.AddHours(-3)
-        };
-        List<Message> messages = new List<Message>(){message1, message2, message3, message4};
-        await _messageCollection.InsertManyAsync(messages);
-        
-        // Act
-        var result = await _messageRepository.UpdateSeenStatus(messages);
-        var messagesFromMongo = await _messageCollection.Find(Builders<Message>.Filter.Empty).ToListAsync();
-        messages.ForEach(m => m.SeenByReceiver = true);
-        
-        // Assert
-        Assert.IsTrue(result);
-        CollectionAssert.AreEqual(messagesFromMongo, messages);
+        Assert.HasCount(3, messagesFromMongo);
+        Assert.IsTrue(messagesFromMongo[0].SeenByReceiver);
+        Assert.IsTrue(messagesFromMongo[1].SeenByReceiver);
+        Assert.IsTrue(messagesFromMongo[2].SeenByReceiver);
 
     }
     

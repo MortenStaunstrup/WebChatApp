@@ -36,9 +36,7 @@ public sealed class UserRepositoryMongoDBTests
             })
             .Build();
 
-        // Docker container will be set to host port 27018
-        // Therefore MONGO_CONNECTION_STRING should be set to mongodb://test:test123@localhost:27018/?authSource=admin
-        var connectionString =
+            var connectionString =
             Environment.GetEnvironmentVariable("MONGO_CONNECTION_STRING")
             ?? "mongodb://localhost:27017";
 

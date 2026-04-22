@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using ChatAppAPI.Repositories;
@@ -6,8 +8,11 @@ using ChatAppAPI.Repositories.Interfaces;
 using ChatAppAPI.Token;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
+using JwtRegisteredClaimNames = System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -92,6 +97,34 @@ builder.Services.AddScoped<IConversationRepository, ConversationRepositoryMongoD
 builder.Services.AddSingleton<TokenProvider>();
 builder.Services.AddScoped<IUserRepository, UserRepositoryMongoDb>();
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("LoginWindow", configure =>
+    {
+        configure.Window = TimeSpan.FromMinutes(1);
+        configure.PermitLimit = 10;
+    });
+
+    options.AddPolicy("UserBasedPolicy", context =>
+    {
+        var userId = context.Request.Headers["Authorization"].FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            throw new Exception("Authorization header is missing for rate limiting in Program.cs");
+        }
+
+        return RateLimitPartition.GetTokenBucketLimiter(userId, _ => new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = 150,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            TokensPerPeriod = 150
+        });
+    });
+    
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -105,6 +138,7 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+app.UseRateLimiter();
 
 app.UseCors("AllowAll");
 

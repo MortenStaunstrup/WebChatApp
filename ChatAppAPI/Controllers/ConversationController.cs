@@ -5,12 +5,14 @@ using Core;
 using Core.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Primitives;
 
 namespace ChatAppAPI.Controllers;
 
 
 [ApiController]
+[EnableRateLimiting("UserBasedPolicy")]
 [Route("api/conversations")]
 [Authorize]
 public class ConversationController : ControllerBase
@@ -35,7 +37,7 @@ public class ConversationController : ControllerBase
         token = tokenWithBearer.Remove(0, 7);
         return 1;
     }
-
+    
     [HttpGet]
     [Authorize]
     [Route("getConversations/{userId:int}/{limit:int}/{page:int}")]
@@ -91,7 +93,6 @@ public class ConversationController : ControllerBase
 
     }
     
-    
     [HttpPost]
     [Authorize]
     [Route("update")]
@@ -116,7 +117,7 @@ public class ConversationController : ControllerBase
             return BadRequest();
         return Ok(result);
     }
-
+    
     [HttpPost]
     [Authorize]
     [Route("updateSeenStatus")]
@@ -140,7 +141,7 @@ public class ConversationController : ControllerBase
             return BadRequest();
         return Ok(result);
     }
-
+    
     [HttpGet]
     [Authorize]
     [Route("get/{userId:int}/{otherPersonId:int}")]
@@ -175,8 +176,7 @@ public class ConversationController : ControllerBase
         
         return Ok(container);
     }
-
-
+    
     [HttpPost]
     [Authorize]
     [Route("create")]

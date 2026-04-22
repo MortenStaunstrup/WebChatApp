@@ -4,6 +4,7 @@ using Core;
 using Core.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Primitives;
 
 namespace ChatAppAPI.Controllers;
@@ -32,6 +33,7 @@ public class AuthController : ControllerBase
     }
     
     // Changed from GET to POST for security reasons (GET's are cached in the browser, BODY gives more security)
+    [EnableRateLimiting("LoginWindow")]
     [HttpPost]
     [Route("login")]
     public async Task<IActionResult> TryLogin([FromBody] LoginRecord loginCredentials)
@@ -62,6 +64,7 @@ public class AuthController : ControllerBase
     
     // Login with refresh token endpoint
     // Should create new refresh token AND jwt token
+    [EnableRateLimiting("UserBasedPolicy")]
     [HttpGet]
     [Route("loginrefresh/{userId:int}")]
     public async Task<IActionResult> LoginWithRefreshToken(int userId, [FromHeader(Name = "RefreshToken")] string refreshToken)
@@ -83,6 +86,7 @@ public class AuthController : ControllerBase
         return Ok(dto);
     }
 
+    [EnableRateLimiting("UserBasedPolicy")]
     [HttpPost]
     [Route("create")]
     public async Task<IActionResult> CreateUser(User user)
@@ -95,6 +99,7 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [EnableRateLimiting("UserBasedPolicy")]
     [HttpGet]
     [Route("getquery/{query}/{limit:int}/{page:int}")]
     [Authorize]
@@ -116,6 +121,7 @@ public class AuthController : ControllerBase
         return Ok(result.GetRange(0, limit));
     }
 
+    [EnableRateLimiting("UserBasedPolicy")]
     [HttpGet]
     [Route("getuser/{id:int}")]
     [Authorize]
@@ -132,6 +138,7 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    [EnableRateLimiting("UserBasedPolicy")]
     [HttpPut]
     [Route("update")]
     [Authorize]

@@ -4,11 +4,13 @@ using Core;
 using Core.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Primitives;
 
 namespace ChatAppAPI.Controllers;
 
 [ApiController]
+[EnableRateLimiting("UserBasedPolicy")]
 [Route("api/messages")]
 [Authorize]
 public class MessagesController : ControllerBase
@@ -31,7 +33,7 @@ public class MessagesController : ControllerBase
           token = tokenWithBearer.Remove(0, 7);
           return 1;
      }
-
+     
      [HttpGet]
      [Route("getMessages/{currentUserId:int}/{otherUserId:int}/{limit:int}/{page:int}")]
      public async Task<IActionResult> GetMessages(int currentUserId, int otherUserId, int limit, int page)
@@ -62,7 +64,7 @@ public class MessagesController : ControllerBase
           return Ok(result.GetRange(0, limit));
           
      }
-
+     
      [HttpGet]
      [Route("getSentMessage/{messageId:int}")]
      public async Task<IActionResult> GetSentMessage(int messageId)
@@ -87,7 +89,7 @@ public class MessagesController : ControllerBase
           }
           return Conflict();
      }
-
+     
      [HttpPost]
      [Route("sendFile")]
      public async Task<IActionResult> SendFile(MessageFileContainer container)
@@ -110,7 +112,7 @@ public class MessagesController : ControllerBase
                return Ok(result);
           return BadRequest();
      }
-
+     
      [HttpGet]
      [Route("getFile/{messageId:int}")]
      public async Task<IActionResult> GetFile(int messageId)
@@ -139,7 +141,7 @@ public class MessagesController : ControllerBase
           }
           return Conflict();
      }
-
+     
      [HttpPost]
      [Route("createMessage")]
      public async Task<IActionResult> CreateMessage(Message message)
@@ -164,7 +166,7 @@ public class MessagesController : ControllerBase
                return Ok(result);
           return Conflict();
      }
-
+     
      [HttpPost]
      [Route("updateSeen")]
      public async Task<IActionResult> UpdateSeenStatus(List<Message> messages)

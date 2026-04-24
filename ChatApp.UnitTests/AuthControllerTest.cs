@@ -7,8 +7,10 @@ using Core.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
+using ILogger = DnsClient.Internal.ILogger;
 using Range = Moq.Range;
 
 namespace ChatApp.Tests;
@@ -16,6 +18,7 @@ namespace ChatApp.Tests;
 [TestClass]
 public sealed class AuthControllerTest
 {
+    private Mock<ILogger<AuthController>> _loggerMock;
     private Mock<IUserRepository> _userRepository;
     private AuthController _authController;
     private TokenProvider _tokenProvider;
@@ -40,8 +43,10 @@ public sealed class AuthControllerTest
         _tokenProvider = new TokenProvider(configRoot);
         
         _userRepository = new Mock<IUserRepository>();
+        
+        _loggerMock = new Mock<ILogger<AuthController>>();
 
-        _authController = new AuthController(_userRepository.Object, _tokenProvider);
+        _authController = new AuthController(_userRepository.Object, _tokenProvider,  _loggerMock.Object);
         _authController.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext()

@@ -9,6 +9,7 @@ using ChatAppAPI.Token;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Logging.AzureAppServices;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
@@ -23,6 +24,11 @@ Env.Load();
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
+builder.Logging.AddAzureWebAppDiagnostics();
+builder.Services.Configure<AzureBlobLoggerOptions>(options =>
+{
+    options.BlobName = "log.txt";
+});
 
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

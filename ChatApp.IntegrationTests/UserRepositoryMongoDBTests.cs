@@ -3,6 +3,7 @@ using ChatAppAPI.Repositories.Interfaces;
 using ChatAppAPI.Token;
 using Core;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Moq;
 
@@ -18,6 +19,7 @@ public sealed class UserRepositoryMongoDBTests
     private UserRepositoryMongoDb _userRepository = null!;
     private string _databaseName = null!;
 
+    private Mock<ILogger<UserRepositoryMongoDb>> _mockLogger;
     private IMongoCollection<RefreshToken> _refreshTokenCollection = null!;
     
     // Input validation is handled in the respective controller
@@ -49,7 +51,9 @@ public sealed class UserRepositoryMongoDBTests
         
         _tokenProvider = new TokenProvider(configRoot);
         
-        _userRepository = new UserRepositoryMongoDb(_tokenProvider, _database, configRoot);
+        _mockLogger =  new Mock<ILogger<UserRepositoryMongoDb>>();
+        
+        _userRepository = new UserRepositoryMongoDb(_tokenProvider, _database, configRoot, _mockLogger.Object);
         
         _refreshTokenCollection = _database.GetCollection<RefreshToken>("RefreshTokens");
     }

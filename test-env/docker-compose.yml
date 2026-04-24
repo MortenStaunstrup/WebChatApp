@@ -7,7 +7,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: test
       MONGO_INITDB_ROOT_PASSWORD: test123
     ports:
-      - "27018:27017"
+      - "27017:27017"
   
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:latest

@@ -5,7 +5,9 @@ using ChatAppAPI.Repositories;
 using ChatAppAPI.Token;
 using Core;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
+using Moq;
 
 namespace ChatApp.IntegrationTests;
 
@@ -19,6 +21,7 @@ public class MessageRepositoryMongoDBTests
     private BlobServiceClient _blobServiceClient = null!;
     private string _blobStorageName = null!;
 
+    private Mock<ILogger<MessageRepositoryMongoDb>> _mockLogger;
     private IMongoCollection<Message> _messageCollection = null!;
     
     [TestInitialize]
@@ -40,7 +43,8 @@ public class MessageRepositoryMongoDBTests
             );
         var container = _blobServiceClient.GetBlobContainerClient(_blobStorageName);
         container.CreateIfNotExists();
-        _messageRepository = new MessageRepositoryMongoDb(_database, container);
+        _mockLogger = new Mock<ILogger<MessageRepositoryMongoDb>>();
+        _messageRepository = new MessageRepositoryMongoDb(_database, container, _mockLogger.Object);
         _messageCollection = _database.GetCollection<Message>("Messages");
     }
     

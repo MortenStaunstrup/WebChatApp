@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -122,12 +123,22 @@ builder.Services.AddRateLimiter(options =>
 
         return RateLimitPartition.GetTokenBucketLimiter(userId, _ => new TokenBucketRateLimiterOptions
         {
-            TokenLimit = 150,
+            TokenLimit = 250,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            TokensPerPeriod = 150
+            TokensPerPeriod = 250
         });
     });
-    
+
+    options.OnRejected = (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int) retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+        }
+
+        return new ValueTask();
+    };
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
@@ -138,15 +149,17 @@ builder.Services.AddCors(options =>
         policy.AllowAnyHeader();
         policy.AllowAnyMethod();
         policy.AllowAnyOrigin();
+        policy.WithExposedHeaders("Retry-After");
     });
 });
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-app.UseRateLimiter();
 
 app.UseCors("AllowAll");
+
+app.UseRateLimiter();
 
 app.UseHttpsRedirection();
 

@@ -356,10 +356,7 @@ public class MessagesController : ControllerBase
                messages?.Count ?? 0);
 
           if (messages == null || messages.Count == 0)
-          {
-               _logger.LogWarning("UpdateSeenStatus failed, messages payload was null or empty");
-               return BadRequest();
-          }
+               return NoContent();
 
           Request.Headers.TryGetValue("Authorization", out var values);
           int decodeResult = DecodeAuthHeader(values, out string token);

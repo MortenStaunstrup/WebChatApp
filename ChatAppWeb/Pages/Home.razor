@@ -14,7 +14,6 @@
 
 <!-- Todo:
     0.0.1 Create Admin panel in seperate project for monitoring users, deleting users (user conversations/messages as well), revoking refresh tokens and more
-    1. Implement logging system (maybe NLog, Loki and Grafana?) (Maybe an Azure solution??)
     2. Feature to update password, AND 'Forgot password' feature
     3. Make UI prettier (probably never going to happen)
     5. Front page has weird height of nothing above it self
@@ -53,6 +52,16 @@ else if (loaded)
     {
         <div class="alerts alert alert-danger" role="alert">
             File could not be downloaded
+        </div>
+    } else if (tooManyRequests)
+    {
+        <div class="alerts alert alert-danger" role="alert">
+            Too many requests sent, please wait @retryTime seconds to try again
+        </div>
+    } else if (fileUploadedSuccessfully)
+    {
+        <div class="alerts alert alert-success" role="alert">
+            File uploaded successfully
         </div>
     }
     
@@ -237,6 +246,9 @@ else if (loaded)
 @code{
     bool loaded = false;
     
+    bool tooManyRequests = false;
+    int retryTime = 0;
+    
     string? SocketPath;
     
     User? _currentUser;
@@ -258,6 +270,7 @@ else if (loaded)
     bool fileSizeTooLarge;
     bool downloadFailed;
     const long maxFileSize = 50000000;
+    bool fileUploadedSuccessfully = false;
     
     string noPicString = "Pictures/noPic.png";
 
@@ -382,6 +395,10 @@ else if (loaded)
                 NavMan.NavigateTo("/logout");
                 return false;
                 break;
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(response.Headers.RetryAfter);
+                return false;
+                break;
             default:
                 throw new ApplicationException("Unexpected HTTP status code from TryLoginWithRefreshToken");
         }
@@ -437,6 +454,10 @@ else if (loaded)
                 
                 case HttpStatusCode.Conflict:
                     Console.WriteLine("Oops... Something went wrong");
+                    break;
+                    
+                case HttpStatusCode.TooManyRequests:
+                    await TooManyRequests(response.Headers.RetryAfter);
                     break;
             }
         
@@ -504,6 +525,10 @@ else if (loaded)
                     NavMan.NavigateTo("/logout");
                 }
                 break;
+                
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(convoResponse.Headers.RetryAfter);
+                break;
         }
         
         StateHasChanged();
@@ -556,6 +581,9 @@ else if (loaded)
             {
                 NavMan.NavigateTo("/logout");
             }
+        } else if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            await TooManyRequests(response.Headers.RetryAfter);
         }
     }
 
@@ -589,6 +617,10 @@ else if (loaded)
                 {
                     NavMan.NavigateTo("/logout");
                 }
+                break;
+                
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(result.Headers.RetryAfter);
                 break;
         }
     }
@@ -641,6 +673,10 @@ else if (loaded)
             case HttpStatusCode.Conflict:
                 Console.WriteLine("Oh no, something went wrong!!!");
                 break;
+                
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(response.Headers.RetryAfter);
+                break;
         }
     }
 
@@ -684,6 +720,10 @@ else if (loaded)
             case HttpStatusCode.Conflict:
                 _newUserSearchPage--;
                 Console.WriteLine("Oh no, something went wrong!!!");
+                break;
+                
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(response.Headers.RetryAfter);
                 break;
                 
         }
@@ -730,6 +770,10 @@ else if (loaded)
             case HttpStatusCode.Conflict:
                 _messagePage--;
                 Console.WriteLine("Oh no, something went wrong!!!");
+                break;
+                
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(response.Headers.RetryAfter);
                 break;
         }
         StateHasChanged();
@@ -790,6 +834,10 @@ else if (loaded)
                 _convoPage--;
                 Console.WriteLine("Oops... Something went wrong");
                 break;
+                
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(response.Headers.RetryAfter);
+                break;
         }
         StateHasChanged();
     }
@@ -822,6 +870,7 @@ else if (loaded)
             switch (uploadResponse.StatusCode)
             {
                 case HttpStatusCode.OK:
+                    await UploadFileSuccess();
                     break;
                 case HttpStatusCode.Unauthorized:
                     var refreshLogin = await TryLoginWithRefreshToken();
@@ -837,6 +886,10 @@ else if (loaded)
                 case HttpStatusCode.BadRequest:
                     await FileCouldNotBeUploadedError();
                     return;
+                    break;
+                    
+                case HttpStatusCode.TooManyRequests:
+                    await TooManyRequests(uploadResponse.Headers.RetryAfter);
                     break;
             }
             
@@ -874,6 +927,10 @@ else if (loaded)
                 {
                     NavMan.NavigateTo("/logout");
                 }
+                break;
+                
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(response.Headers.RetryAfter);
                 break;
         }
  
@@ -955,6 +1012,9 @@ else if (loaded)
                 {
                     NavMan.NavigateTo("/logout");
                 }
+            } else if (postConvoResponse.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                await TooManyRequests(postConvoResponse.Headers.RetryAfter);
             }
             
         }
@@ -1006,6 +1066,9 @@ else if (loaded)
                     {
                         NavMan.NavigateTo("/logout");
                     }
+                } else if (update.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    await TooManyRequests(update.Headers.RetryAfter);
                 }
                 else
                 {
@@ -1026,6 +1089,9 @@ else if (loaded)
                 {
                     NavMan.NavigateTo("/logout");
                 }
+            } else if (newResponse.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                await TooManyRequests(newResponse.Headers.RetryAfter);
             }
             else
             {
@@ -1042,6 +1108,9 @@ else if (loaded)
             {
                 NavMan.NavigateTo("/logout");
             }
+        } else if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            await TooManyRequests(response.Headers.RetryAfter);
         }
         else
         {
@@ -1092,6 +1161,28 @@ else if (loaded)
         StateHasChanged();
         await Task.Delay(3000);
         fileSizeTooLarge = false;
+        StateHasChanged();
+    }
+
+    private async Task TooManyRequests(RetryConditionHeaderValue? retryConditionHeaderValue)
+    {
+        if (retryConditionHeaderValue is not null)
+            retryTime = (int)retryConditionHeaderValue.Delta.Value.TotalSeconds;
+        if (retryConditionHeaderValue is null)
+            Console.WriteLine("Fucking retry header value is null ffs");
+        tooManyRequests = true;
+        StateHasChanged();
+        await Task.Delay(3000);
+        tooManyRequests = false;
+        StateHasChanged();
+    }
+
+    private async Task UploadFileSuccess()
+    {
+        fileUploadedSuccessfully = true;
+        StateHasChanged();
+        await Task.Delay(3000);
+        fileUploadedSuccessfully = false;
         StateHasChanged();
     }
     
@@ -1175,6 +1266,9 @@ else if (loaded)
             _previousConversations = zipped.Select(t => t.convo).ToList();
             _usersForPreviousConversations = zipped.Select(t => t.user).ToList();
             StateHasChanged();
+        } else if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            await TooManyRequests(response.Headers.RetryAfter);
         } else if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
             var refreshLogin = await TryLoginWithRefreshToken();
@@ -1219,6 +1313,10 @@ else if (loaded)
                 userFound = false;
                 StateHasChanged();
                 return;
+                break;
+                
+            case HttpStatusCode.TooManyRequests:
+                await TooManyRequests(userResponse.Headers.RetryAfter);
                 break;
         }
 

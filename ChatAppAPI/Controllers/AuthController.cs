@@ -147,7 +147,7 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
-    [EnableRateLimiting("UserBasedPolicy")]
+    [EnableRateLimiting("QueryPolicy")]
     [HttpGet]
     [Route("getquery/{query}/{limit:int}/{page:int}")]
     [Authorize]
@@ -155,7 +155,7 @@ public class AuthController : ControllerBase
     {
         _logger.LogInformation("GetQueriedUsers endpoint called with limit {Limit} and page {Page}", limit, page);
 
-        if (limit <= 0 || page <= 0)
+        if (limit <= 0 || page < 0)
         {
             _logger.LogWarning("GetQueriedUsers failed validation, invalid limit {Limit} or page {Page}", limit, page);
             return BadRequest();

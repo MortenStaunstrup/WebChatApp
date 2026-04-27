@@ -129,6 +129,13 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 
+    // Could be a problem, how many times can they query our users?
+    options.AddFixedWindowLimiter("QueryPolicy", configure =>
+    {
+        configure.Window = TimeSpan.FromMinutes(1);
+        configure.PermitLimit = 500;
+    });
+
     options.OnRejected = (context, cancellationToken) =>
     {
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
